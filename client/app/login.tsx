@@ -8,11 +8,12 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { login, signup } from '../api/auth';
+// ❌ 실제 연동용 import
+// import { login, signup } from '../api/auth';
 import { useAuth } from '../contexts/useAuth';
-import { Alert } from 'react-native';
 
 const CheckBox = Platform.OS === 'web'
   ? ({ value, onValueChange }: any) => (
@@ -29,8 +30,7 @@ export default function AuthScreen() {
   const [tab, setTab] = useState<'login' | 'signup'>('login');
   const router = useRouter();
 
-const { login: setUser } = useAuth();
-
+  const { login: setUser } = useAuth();
 
   // 로그인 상태
   const [loginEmail, setLoginEmail] = useState('');
@@ -47,12 +47,23 @@ const { login: setUser } = useAuth();
 
   const handleLogin = async () => {
     try {
+      // ✅ 테스트용 더미 유저 로그인
+      const dummyUser = {
+        id: 1,
+        email: loginEmail || 'test@example.com',
+        nickname: '테스트유저',
+      };
+      setUser(dummyUser);
+      router.replace('/home');
+
+      // ❌ 실제 연동용
+      /*
       const userData = await login({ email: loginEmail, password: loginPassword });
-      setUser(userData); // 👈 로그인 성공 후 context에 유저 정보 저장
-      router.replace('/home'); // 홈으로 이동
+      setUser(userData);
+      router.replace('/home');
+      */
     } catch (error: any) {
-    const message = error.message || '로그인 중 오류가 발생했습니다.';
-    Alert.alert('로그인 실패', message); 
+      Alert.alert('로그인 실패', '테스트용 로그인에서 오류 발생');
     }
   };
 
@@ -66,29 +77,30 @@ const { login: setUser } = useAuth();
       return;
     }
 
-    console.log('회원가입 요청 보냄');
-
-
     try {
-        const userInfo = await signup({
-          email: signupEmail,
-          password: signupPassword,
-          name: nickname,
-          userId: signupEmail,
-        });
-        console.log('✅ 회원가입 성공:', userInfo);
+      // ✅ 테스트용 더미 유저 회원가입
+      const dummyUser = {
+        id: 1,
+        email: signupEmail || 'test@example.com',
+        nickname: nickname || '테스트유저',
+      };
+      setUser(dummyUser);
+      router.replace('/home');
 
-        setUser(userInfo); // ✅ 이 줄을 추가해야 홈에서 닉네임이 뜸
-        console.log('✅ setUser 완료');
-
-        router.replace('/home');
-        console.log('✅ 홈으로 이동 완료');
-
-      } catch (e) {
-        console.error('❌ 회원가입 오류:', e);
-        Alert.alert('회원가입 실패', e?.message || '문제가 발생했습니다.');
-         setError(e?.message || '회원가입 실패');
-      }
+      // ❌ 실제 연동용
+      /*
+      const userInfo = await signup({
+        email: signupEmail,
+        password: signupPassword,
+        name: nickname,
+        userId: signupEmail,
+      });
+      setUser(userInfo);
+      router.replace('/home');
+      */
+    } catch (e) {
+      Alert.alert('회원가입 실패', '테스트용 가입에서 오류 발생');
+    }
   };
 
   return (
@@ -175,7 +187,9 @@ const { login: setUser } = useAuth();
         style={styles.submitButton}
         onPress={tab === 'login' ? handleLogin : handleSignup}
       >
-        <Text style={styles.submitButtonText}>{tab === 'login' ? '로그인' : '회원가입'}</Text>
+        <Text style={styles.submitButtonText}>
+          {tab === 'login' ? '로그인' : '회원가입'}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );

@@ -63,11 +63,23 @@ export default function CartScreen() {
       <Text style={styles.productName}>{item.product_name}</Text>
 
       <View style={styles.controls}>
-        <Pressable onPress={() => updateQuantity(item.product_id, -1)} style={styles.controlBtn}>
+        <Pressable
+          onPress={() => {
+            if (item.quantity > 1) {
+              updateQuantity(item.product_id, -1);
+            }
+          }}
+          style={styles.controlBtn}
+        >
           <Text>－</Text>
         </Pressable>
+
         <Text style={styles.quantity}>{item.quantity}</Text>
-        <Pressable onPress={() => updateQuantity(item.product_id, 1)} style={styles.controlBtn}>
+
+        <Pressable
+          onPress={() => updateQuantity(item.product_id, 1)}
+          style={styles.controlBtn}
+        >
           <Text>＋</Text>
         </Pressable>
       </View>
@@ -79,6 +91,10 @@ export default function CartScreen() {
       </Pressable>
     </View>
   );
+
+  useEffect(() => {
+    fetchCart();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -104,7 +120,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     backgroundColor: '#fff',
-  }, // 전체 화면 컨테이너
+  },
 
   itemRow: {
     flexDirection: 'row',
@@ -112,18 +128,18 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderColor: '#f0f0f0',
-  }, // 장바구니 아이템 한 줄 박스
+  },
 
   productName: {
     flex: 1,
     fontSize: 16,
-  }, // 상품 이름 텍스트
+  },
 
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 8,
-  }, // 수량 조절 버튼 + 숫자 묶음
+  },
 
   controlBtn: {
     borderWidth: 1,
@@ -134,24 +150,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 4,
-  }, // 수량 증감 버튼 스타일
+  },
 
   quantity: {
     fontSize: 16,
     marginHorizontal: 4,
-  }, // 현재 수량 표시 텍스트
+  },
 
   price: {
     width: 80,
     textAlign: 'right',
     fontSize: 14,
-  }, // 상품 가격 텍스트
+  },
 
   delete: {
     marginLeft: 10,
     fontSize: 18,
     color: '#888',
-  }, // X(삭제) 버튼
+  },
 
   footer: {
     position: 'absolute',
@@ -162,24 +178,23 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: '#eee',
     backgroundColor: '#fff',
-  }, // 하단 결제 버튼 영역
+  },
 
   payButton: {
     backgroundColor: '#22C55E',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-  }, // '결제하기' 버튼 박스
+  },
 
   payText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-  }, // 결제 버튼 안 텍스트
+  },
 
   total: {
     color: '#fff',
     marginTop: 4,
-  }, // 결제 버튼 안 총 금액 텍스트
+  },
 });
-

@@ -89,8 +89,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     margin: 10,
     textAlign: 'left',
-    // textAlign: 'center',
+    alignSelf: 'flex-start',
+    marginLeft: 16,     
     lineHeight: 40,
+    marginBottom: 24,
   },
   subtitle: {
     fontSize: 14,

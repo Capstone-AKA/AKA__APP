@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+// ❌ 실제 연동용: axios import (현재는 사용 안 함)
 import axios from 'axios';
 import { useAuth } from '../../contexts/useAuth';
 
@@ -20,11 +21,38 @@ interface CartItem {
 
 export default function CartScreen() {
   const { user } = useAuth();
-  const userId = user?.id || 1; // 임시 user ID
+  const userId = user?.id || 1;
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalAmount, setTotalAmount] = useState<number>(0);
 
   const fetchCart = async () => {
+    // ✅ 테스트용 mock 데이터
+    const mockData = {
+      items: [
+        {
+          product_id: 101,
+          product_name: '피망',
+          price: 1500,
+          quantity: 2,
+          total_price: 3000,
+        },
+        {
+          product_id: 102,
+          product_name: '파프리카',
+          price: 2000,
+          quantity: 1,
+          total_price: 2000,
+        },
+      ],
+    };
+
+    setCartItems(mockData.items);
+    setTotalAmount(
+      mockData.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    );
+
+    // ❌ 실제 연동용 코드 (연결되면 아래 주석 해제)
+    /*
     try {
       const res = await axios.get(`https://your-api.com/cart/active?user_id=${userId}`);
       setCartItems(res.data.items);
@@ -32,30 +60,25 @@ export default function CartScreen() {
     } catch (err) {
       console.error('장바구니 조회 실패', err);
     }
+    */
   };
 
+  // ✅ 테스트용 수량 변경 로직 (axios 제거)
   const updateQuantity = async (product_id: number, amount: number) => {
-    try {
-      await axios.post('https://your-api.com/cart/add_item', {
-        user_id: userId,
-        product_id,
-        quantity: amount,
-      });
-      fetchCart();
-    } catch {
-      Alert.alert('수량 변경 실패');
-    }
+    setCartItems((prevItems) =>
+      prevItems.map((item) =>
+        item.product_id === product_id
+          ? { ...item, quantity: item.quantity + amount }
+          : item
+      )
+    );
   };
 
+  // ✅ 테스트용 삭제 로직 (axios 제거)
   const deleteItem = async (product_id: number) => {
-    try {
-      await axios.delete('https://your-api.com/cart/delete_item', {
-        data: { user_id: userId, product_id },
-      });
-      fetchCart();
-    } catch {
-      Alert.alert('삭제 실패');
-    }
+    setCartItems((prevItems) =>
+      prevItems.filter((item) => item.product_id !== product_id)
+    );
   };
 
   const renderItem = ({ item }: { item: CartItem }) => (
@@ -86,7 +109,10 @@ export default function CartScreen() {
 
       <Text style={styles.price}>₩{item.price.toLocaleString()}</Text>
 
-      <Pressable onPress={() => deleteItem(item.product_id)}>
+      <Pressable
+        onPress={() => deleteItem(item.product_id)}
+        hitSlop={10}
+      >
         <Text style={styles.delete}>✕</Text>
       </Pressable>
     </View>

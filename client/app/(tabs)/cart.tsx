@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import axios from 'axios'; // ❌ 실제 연동용 (현재는 사용 안 함)
 import { useAuth } from '../../contexts/useAuth';
+import PaymentModal from '../../components/PaymentModal'; // ✅ [추가] 결제 모달 컴포넌트 임포트
 
 interface CartItem {
   product_id: number;
@@ -25,6 +26,7 @@ export default function CartScreen() {
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalAmount, setTotalAmount] = useState<number>(0);
+  const [modalVisible, setModalVisible] = useState(false); // ✅ [추가] 모달 상태 관리
 
   const fetchCart = async () => {
     // ✅ 테스트용 mock 데이터
@@ -181,8 +183,19 @@ export default function CartScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
       />
 
+      {/* ✅ [추가] 결제 모달 */}
+      <PaymentModal
+        visible={modalVisible}
+        mode="confirm"
+        onClose={() => setModalVisible(false)}
+        onPaymentComplete={() => {
+          // ✅ 결제 완료 처리 (필요시 API 호출 등)
+          console.log('결제 완료');
+        }}
+      />
+
       <View style={styles.footer}>
-        <Pressable style={styles.payButton} onPress={() => Alert.alert('결제 진행')}>
+        <Pressable style={styles.payButton} onPress={() => setModalVisible(true)}>
           <Text style={styles.payText}>결제하기</Text>
           <Text style={styles.total}>총 {totalAmount.toLocaleString()}원</Text>
         </Pressable>

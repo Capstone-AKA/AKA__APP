@@ -137,10 +137,13 @@ export default function CartScreen() {
 
   // 결제 요청 함수
   const handlePayment = async () => {
-
     // 임시데이터
-    console.log('✅ [Mock] 결제 요청됨');
+    console.log('결제 요청됨');
     setModalMode('complete');
+
+    // 결제 완료 후 장바구니 초기화
+    setCartItems([]);
+    setTotalAmount(0);
 
     // 실제 연동용 결제 API 호출
     // try {

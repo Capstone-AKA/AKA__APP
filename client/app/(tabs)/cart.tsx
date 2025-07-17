@@ -27,6 +27,7 @@ export default function CartScreen() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [modalVisible, setModalVisible] = useState(false); // ✅ [추가] 모달 상태 관리
+  const [modalMode, setModalMode] = useState<'confirm' | 'complete'>('confirm'); // ✅ [추가] 모달 모드 상태
 
   const fetchCart = async () => {
     // ✅ 테스트용 mock 데이터
@@ -133,6 +134,31 @@ export default function CartScreen() {
     */
   };
 
+  // 결제 요청 함수
+  const handlePayment = async () => {
+    try {
+      const res = await axios.post('http://localhost:8080/payment/checkout', {
+        user_id: userId,
+        cart_id: cartId,
+        is_auto: false,
+      });
+
+      if (res.data.status === 'success') {
+        console.log('✅ 결제 완료:', res.data);
+        setModalVisible(false);
+        setTimeout(() => {
+          setModalMode('complete');
+          setModalVisible(true);
+        }, 300);
+      } else {
+        Alert.alert('❌ 결제 실패', res.data.message || '알 수 없는 오류');
+      }
+    } catch (error) {
+      console.error('❌ 결제 오류:', error);
+      Alert.alert('결제 실패', '네트워크 오류 또는 서버 문제입니다.');
+    }
+  };
+
   const renderItem = ({ item }: { item: CartItem }) => (
     <View style={styles.itemRow}>
       <Text style={styles.productName}>{item.product_name}</Text>
@@ -161,10 +187,7 @@ export default function CartScreen() {
 
       <Text style={styles.price}>₩{item.price.toLocaleString()}</Text>
 
-      <Pressable
-        onPress={() => deleteItem(item.product_id)}
-        hitSlop={10}
-      >
+      <Pressable onPress={() => deleteItem(item.product_id)} hitSlop={10}>
         <Text style={styles.delete}>✕</Text>
       </Pressable>
     </View>
@@ -183,19 +206,23 @@ export default function CartScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
       />
 
-      {/* ✅ [추가] 결제 모달 */}
+      {/* [추가] 결제 모달 */}
       <PaymentModal
         visible={modalVisible}
-        mode="confirm"
+        mode={modalMode}
         onClose={() => setModalVisible(false)}
-        onPaymentComplete={() => {
-          // ✅ 결제 완료 처리 (필요시 API 호출 등)
-          console.log('결제 완료');
+        onConfirm={handlePayment}
+        onViewReceipt={() => {
+          setModalVisible(false);
+          // TODO: 영수증 화면 이동 처리 가능
         }}
       />
 
       <View style={styles.footer}>
-        <Pressable style={styles.payButton} onPress={() => setModalVisible(true)}>
+        <Pressable style={styles.payButton} onPress={() => {
+          setModalMode('confirm'); // [추가] 모달 모드 설정
+          setModalVisible(true);
+        }}>
           <Text style={styles.payText}>결제하기</Text>
           <Text style={styles.total}>총 {totalAmount.toLocaleString()}원</Text>
         </Pressable>

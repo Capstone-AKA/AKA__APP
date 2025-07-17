@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import axios from 'axios'; // ❌ 실제 연동용 (현재는 사용 안 함)
 import { useAuth } from '../../contexts/useAuth';
 import PaymentModal from '../../components/PaymentModal'; // ✅ [추가] 결제 모달 컴포넌트 임포트
@@ -23,6 +24,7 @@ export default function CartScreen() {
   const { user } = useAuth();
   const userId = user?.id || 1;
   const cartId = 123; // ✅ 테스트용 cartId. 실제 BLE 입장 시 받아와야 함
+  const router = useRouter();
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalAmount, setTotalAmount] = useState<number>(0);
@@ -135,39 +137,60 @@ export default function CartScreen() {
     */
   };
 
-  // 결제 요청 함수
-  const handlePayment = async () => {
-    // 임시데이터
-    console.log('결제 요청됨');
-    setModalMode('complete');
+// 결제 요청 함수
+const handlePayment = async () => {
+  // ✅ 임시데이터 (mock 결제)
+  console.log('결제 요청됨');
+  setModalMode('complete');
 
-    // 결제 완료 후 장바구니 초기화
-    setCartItems([]);
-    setTotalAmount(0);
+  // ✅ 영수증 페이지로 이동
+  router.push({
+    pathname: '/receipt',
+    params: {
+      amount: totalAmount,
+      items: JSON.stringify(cartItems),
+    },
+  });
 
-    // 실제 연동용 결제 API 호출
-    // try {
-    //   const res = await axios.post('http://localhost:8080/payment/checkout', {
-    //     user_id: userId,
-    //     cart_id: cartId,
-    //     is_auto: false,
-    //   });
+  // ✅ 결제 완료 후 장바구니 초기화
+  setCartItems([]);
+  setTotalAmount(0);
 
-    //   if (res.data.status === 'success') {
-    //     console.log('✅ 결제 완료:', res.data);
-    //     setModalVisible(false);
-    //     setTimeout(() => {
-    //       setModalMode('complete');
-    //       setModalVisible(true);
-    //     }, 300);
-    //   } else {
-    //     Alert.alert('❌ 결제 실패', res.data.message || '알 수 없는 오류');
-    //   }
-    // } catch (error) {
-    //   console.error('❌ 결제 오류:', error);
-    //   Alert.alert('결제 실패', '네트워크 오류 또는 서버 문제입니다.');
-    // }
-  };
+  // ❌ 실제 연동용 결제 API 호출
+  /*
+  try {
+    const res = await axios.post('http://localhost:8080/payment/checkout', {
+      user_id: userId,
+      cart_id: cartId,
+      is_auto: false,
+    });
+
+    if (res.data.status === 'success') {
+      console.log('✅ 결제 완료:', res.data);
+      setModalVisible(false);
+      setTimeout(() => {
+        setModalMode('complete');
+        setModalVisible(true);
+      }, 300);
+
+      router.push({
+        pathname: '/receipt',
+        params: {
+          amount: res.data.amount,
+          items: JSON.stringify(res.data.items),
+        },
+      });
+
+    } else {
+      Alert.alert('❌ 결제 실패', res.data.message || '알 수 없는 오류');
+    }
+  } catch (error) {
+    console.error('❌ 결제 오류:', error);
+    Alert.alert('결제 실패', '네트워크 오류 또는 서버 문제입니다.');
+  }
+  */
+};
+
 
   const renderItem = ({ item }: { item: CartItem }) => (
     <View style={styles.itemRow}>

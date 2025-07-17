@@ -28,6 +28,7 @@ export default function CartScreen() {
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [modalVisible, setModalVisible] = useState(false); // ✅ [추가] 모달 상태 관리
   const [modalMode, setModalMode] = useState<'confirm' | 'complete'>('confirm'); // ✅ [추가] 모달 모드 상태
+  
 
   const fetchCart = async () => {
     // ✅ 테스트용 mock 데이터
@@ -136,27 +137,33 @@ export default function CartScreen() {
 
   // 결제 요청 함수
   const handlePayment = async () => {
-    try {
-      const res = await axios.post('http://localhost:8080/payment/checkout', {
-        user_id: userId,
-        cart_id: cartId,
-        is_auto: false,
-      });
 
-      if (res.data.status === 'success') {
-        console.log('✅ 결제 완료:', res.data);
-        setModalVisible(false);
-        setTimeout(() => {
-          setModalMode('complete');
-          setModalVisible(true);
-        }, 300);
-      } else {
-        Alert.alert('❌ 결제 실패', res.data.message || '알 수 없는 오류');
-      }
-    } catch (error) {
-      console.error('❌ 결제 오류:', error);
-      Alert.alert('결제 실패', '네트워크 오류 또는 서버 문제입니다.');
-    }
+    // 임시데이터
+    console.log('✅ [Mock] 결제 요청됨');
+    setModalMode('complete');
+
+    // 실제 연동용 결제 API 호출
+    // try {
+    //   const res = await axios.post('http://localhost:8080/payment/checkout', {
+    //     user_id: userId,
+    //     cart_id: cartId,
+    //     is_auto: false,
+    //   });
+
+    //   if (res.data.status === 'success') {
+    //     console.log('✅ 결제 완료:', res.data);
+    //     setModalVisible(false);
+    //     setTimeout(() => {
+    //       setModalMode('complete');
+    //       setModalVisible(true);
+    //     }, 300);
+    //   } else {
+    //     Alert.alert('❌ 결제 실패', res.data.message || '알 수 없는 오류');
+    //   }
+    // } catch (error) {
+    //   console.error('❌ 결제 오류:', error);
+    //   Alert.alert('결제 실패', '네트워크 오류 또는 서버 문제입니다.');
+    // }
   };
 
   const renderItem = ({ item }: { item: CartItem }) => (
@@ -206,15 +213,15 @@ export default function CartScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
       />
 
-      {/* [추가] 결제 모달 */}
+      {/* 결제 모달 */}
       <PaymentModal
         visible={modalVisible}
         mode={modalMode}
         onClose={() => setModalVisible(false)}
         onConfirm={handlePayment}
         onViewReceipt={() => {
+          console.log('영수증 보기');
           setModalVisible(false);
-          // TODO: 영수증 화면 이동 처리 가능
         }}
       />
 

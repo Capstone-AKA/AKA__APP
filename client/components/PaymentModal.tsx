@@ -31,13 +31,13 @@ export default function PaymentModal({
         <View style={styles.modal}>
           {mode === 'confirm' ? (
             <>
-              {/* ✅ 두 줄 제목 */}
+              {/* 두 줄 제목 */}
               <Text style={styles.title}>{'결제를\n하시겠습니까?'}</Text>
 
-              {/* ✅ 구분선 */}
+              {/* 구분선 */}
               <View style={styles.separator} />
 
-              {/* ✅ 버튼 */}
+              {/* 버튼 */}
               <View style={styles.iconRow}>
                 <TouchableOpacity onPress={onConfirm} style={styles.iconButton}>
                   <Icon name="check" size={24} color="green" />

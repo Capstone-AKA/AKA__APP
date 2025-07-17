@@ -24,9 +24,9 @@ export default function TabLayout() {
         tabBarIcon: ({ color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
 
-          if (route.name === 'home') iconName = 'home-outline';          // 🏠 홈 아이콘
-          else if (route.name === 'map') iconName = 'storefront-outline'; // 🏪 지도 아이콘 (더 직관적)
-          else if (route.name === 'cart') iconName = 'cart-outline';     // 🛒 장바구니 아이콘
+          if (route.name === 'home') iconName = 'home-outline';          // 홈 아이콘
+          else if (route.name === 'map') iconName = 'storefront-outline'; // 지도 아이콘
+          else if (route.name === 'cart') iconName = 'cart-outline';     // 장바구니 아이콘
 
           return <Ionicons name={iconName} size={size ?? 24} color={color} />;
         },

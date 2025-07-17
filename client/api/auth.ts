@@ -19,7 +19,7 @@ api.interceptors.request.use(async (config) => {
 });
 
 /**
- * ✅ 로그인
+ * 로그인
  * 성공 시 access/refresh 토큰 저장 + 사용자 정보 반환
  */
 export const login = async ({ email, password }: { email: string; password: string }) => {

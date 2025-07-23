@@ -27,9 +27,9 @@ public class CartService {
             throw new RuntimeException("이미 다른 사용자에게 할당된 카트입니다.");
         }
 
-        if (!cart.getIsActive()) {
+        /*if (!cart.getIsActive()) {
             throw new IllegalStateException("비활성 카트입니다.");
-        }
+        }*/
 
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
@@ -39,6 +39,8 @@ public class CartService {
         }
 
         cart.setUserId(userId);
+        cart.setIsActive(true);
+        cart.setStatus("assigned");
         cartRepository.save(cart);
     }
 

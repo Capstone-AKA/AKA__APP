@@ -23,7 +23,7 @@ public class CartController {
 
     @PostMapping("/enter")
     public ResponseEntity<String> enterByBle(@RequestBody CartEnterRequestDto request) {
-        cartService.cartEnterByBle(request.getCartCode());
+        cartService.cartEnterByBle(request.getCartCode(), request.getStoreId());
         return ResponseEntity.ok("BLE 입장이 완료되었습니다.");
     }
 

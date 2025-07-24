@@ -1,6 +1,5 @@
 package com.app.aka.service;
 
-import com.app.aka.dto.CartEnterRequestDto;
 import com.app.aka.entity.CartEntity;
 import com.app.aka.entity.UserEntity;
 import com.app.aka.repository.CartRepository;
@@ -27,10 +26,6 @@ public class CartService {
             throw new RuntimeException("이미 다른 사용자에게 할당된 카트입니다.");
         }
 
-        /*if (!cart.getIsActive()) {
-            throw new IllegalStateException("비활성 카트입니다.");
-        }*/
-
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
@@ -44,13 +39,27 @@ public class CartService {
         cartRepository.save(cart);
     }
 
-    public void cartEnterByBle(String cartCode) {
+    public void cartEnterByBle(String cartCode, Long storeId) {
         CartEntity cart = cartRepository.findByCartCode(cartCode)
                 .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다."));
+
+        //카트가 할당된 매장과 현재 입장 매장이 다른 경우를 방지
+        if (!cart.getStoreId().equals(storeId)) {
+            throw new IllegalStateException("카트가 할당된 매장 [" + cart.getStoreId() + "]과 현재 입장한 매장 [" + storeId + "]이 다릅니다.");
+        }
 
         cart.setStatus("entered");
         cart.setIsActive(true);
         cart.setCreatedAt(LocalDateTime.now());
         cartRepository.save(cart);
+
+        if (cart.getUserId() != null) {
+            UserEntity user = userRepository.findById(cart.getUserId())
+                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
+
+            user.setCurrentStoreId(storeId);
+            user.setLastLoginAt(LocalDateTime.now());
+            userRepository.save(user);
+        }
     }
 }

@@ -28,8 +28,8 @@ export default function CartScreen() {
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalAmount, setTotalAmount] = useState<number>(0);
-  const [modalVisible, setModalVisible] = useState(false); // ✅ [추가] 모달 상태 관리
-  const [modalMode, setModalMode] = useState<'confirm' | 'complete'>('confirm'); // ✅ [추가] 모달 모드 상태
+  const [modalVisible, setModalVisible] = useState(false); // ✅ 모달 상태 관리
+  const [modalMode, setModalMode] = useState<'confirm' | 'complete'>('confirm'); // ✅ 모달 모드 상태
   
 
   const fetchCart = async () => {
@@ -139,25 +139,19 @@ export default function CartScreen() {
 
 // 결제 요청 함수
 const handlePayment = async () => {
-  // ✅ 임시데이터 (mock 결제)
-  console.log('결제 요청됨');
-  setModalMode('complete');
+  // 모의 결제 처리 
+  if (__DEV__) { // 연동할때 알아서 이부분은 반영안하고 아래만 반영한다함 건들필요없다함
+    console.log(' [Mock 결제] 요청됨');
+    setModalMode('complete');   // 완료 모드로 변경
+    setModalVisible(true);      // 모달 재표시
 
-  // ✅ 영수증 페이지로 이동
-  router.push({
-    pathname: '/receipt',
-    params: {
-      amount: totalAmount,
-      items: JSON.stringify(cartItems),
-    },
-  });
+    // 장바구니 초기화
+    setCartItems([]);
+    setTotalAmount(0);
+    return;
+  }
 
-  // ✅ 결제 완료 후 장바구니 초기화
-  setCartItems([]);
-  setTotalAmount(0);
-
-  // ❌ 실제 연동용 결제 API 호출
-  /*
+  // ✅ 실제 결제 연동
   try {
     const res = await axios.post('http://localhost:8080/payment/checkout', {
       user_id: userId,
@@ -167,20 +161,14 @@ const handlePayment = async () => {
 
     if (res.data.status === 'success') {
       console.log('✅ 결제 완료:', res.data);
-      setModalVisible(false);
-      setTimeout(() => {
-        setModalMode('complete');
-        setModalVisible(true);
-      }, 300);
 
-      router.push({
-        pathname: '/receipt',
-        params: {
-          amount: res.data.amount,
-          items: JSON.stringify(res.data.items),
-        },
-      });
+      // 응답 받은 데이터로 상태 갱신
+      setCartItems([]); // 결제 후 장바구니 비우기
+      setTotalAmount(res.data.amount || 0);
 
+      // 모달 상태를 결제 완료로 변경
+      setModalMode('complete');
+      setModalVisible(true);
     } else {
       Alert.alert('❌ 결제 실패', res.data.message || '알 수 없는 오류');
     }
@@ -188,8 +176,8 @@ const handlePayment = async () => {
     console.error('❌ 결제 오류:', error);
     Alert.alert('결제 실패', '네트워크 오류 또는 서버 문제입니다.');
   }
-  */
 };
+
 
 
   const renderItem = ({ item }: { item: CartItem }) => (
@@ -246,14 +234,21 @@ const handlePayment = async () => {
         onClose={() => setModalVisible(false)}
         onConfirm={handlePayment}
         onViewReceipt={() => {
-          console.log('영수증 보기');
           setModalVisible(false);
+          router.push({
+            pathname: '/receipt',
+            params: {
+              amount: totalAmount,
+              items: JSON.stringify(cartItems),
+            },
+          });
         }}
       />
 
+
       <View style={styles.footer}>
         <Pressable style={styles.payButton} onPress={() => {
-          setModalMode('confirm'); // [추가] 모달 모드 설정
+          setModalMode('confirm'); // 모달 모드 설정
           setModalVisible(true);
         }}>
           <Text style={styles.payText}>결제하기</Text>

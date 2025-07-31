@@ -22,8 +22,8 @@ public class ProductEntity {
     @Column(name = "price", nullable = false)
     private Integer price;
 
-    @Column(name = "barcode", unique = true, nullable = false)
-    private String barcode;
+    @Column(name = "image_identifier", unique = true, nullable = false)
+    private String imageIdentifier;
 
     @Column(name = "image_url")
     private String imageUrl;

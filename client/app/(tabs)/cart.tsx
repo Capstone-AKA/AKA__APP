@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import axios from 'axios'; // ❌ 실제 연동용 (현재는 사용 안 함)
+import axios from 'axios'; // 실제 연동용 (현재는 사용 안 함)
 import { useAuth } from '../../contexts/useAuth';
 import PaymentModal from '../../components/PaymentModal'; // ✅ [추가] 결제 모달 컴포넌트 임포트
 
@@ -23,17 +23,20 @@ interface CartItem {
 export default function CartScreen() {
   const { user } = useAuth();
   const userId = user?.id || 1;
-  const cartId = 123; // ✅ 테스트용 cartId. 실제 BLE 입장 시 받아와야 함
+  const cartId = 123; // 테스트용 cartId. 실제 BLE 입장 시 받아와야 함
   const router = useRouter();
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalAmount, setTotalAmount] = useState<number>(0);
-  const [modalVisible, setModalVisible] = useState(false); // ✅ 모달 상태 관리
-  const [modalMode, setModalMode] = useState<'confirm' | 'complete'>('confirm'); // ✅ 모달 모드 상태
-  
+  const [modalVisible, setModalVisible] = useState(false); //모달 상태 관리
+  const [modalMode, setModalMode] = useState<'confirm' | 'complete'>('confirm'); //모달 모드 상태
+  //  장바구니 초기화 전에 영수증에 넘길 데이터를 보관하기 위한 상태
+  const [finalAmount, setFinalAmount] = useState<number>(0);
+  const [finalItems, setFinalItems] = useState<CartItem[]>([]);
+
 
   const fetchCart = async () => {
-    // ✅ 테스트용 mock 데이터
+    // 테스트용 mock 데이터
     const mockData = {
       items: [
         {
@@ -57,7 +60,7 @@ export default function CartScreen() {
       mockData.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
     );
 
-    // ❌ 실제 연동용: 장바구니 조회
+    // 실제 연동용: 장바구니 조회
     /*
     try {
       const res = await axios.get(`http://localhost:8080/cart/active?user_id=${userId}`);
@@ -70,13 +73,13 @@ export default function CartScreen() {
     */
   };
 
-  // ✅ 테스트용 총합 갱신
+  // 테스트용 총합 갱신
   const recalculateTotal = (items: CartItem[]) => {
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     setTotalAmount(total);
   };
 
-  // ❌ 실제 연동용: 총합 금액 서버에서 받아오기
+  // 실제 연동용: 총합 금액 서버에서 받아오기
   /*
   const fetchTotalAmount = async () => {
     try {
@@ -92,7 +95,7 @@ export default function CartScreen() {
   };
   */
 
-  // ✅ 테스트용 수량 변경
+  // 테스트용 수량 변경
   const updateQuantity = async (product_id: number, amount: number) => {
     setCartItems((prevItems) => {
       const updated = prevItems.map((item) =>
@@ -104,7 +107,7 @@ export default function CartScreen() {
       return updated;
     });
 
-    // ❌ 실제 연동용 수량 변경
+    // 실제 연동용 수량 변경
     /*
     try {
       await axios.patch(`http://localhost:8080/cart/update_quantity`, {
@@ -118,7 +121,7 @@ export default function CartScreen() {
     */
   };
 
-  // ✅ 테스트용 삭제
+  // 테스트용 삭제
   const deleteItem = async (product_id: number) => {
     setCartItems((prevItems) => {
       const filtered = prevItems.filter((item) => item.product_id !== product_id);
@@ -126,7 +129,7 @@ export default function CartScreen() {
       return filtered;
     });
 
-    // ❌ 실제 연동용 삭제
+    // 실제 연동용 삭제
     /*
     try {
       await axios.delete(`http://localhost:8080/cart/item/${product_id}`);
@@ -142,6 +145,11 @@ const handlePayment = async () => {
   // 모의 결제 처리 
   if (__DEV__) { // 연동할때 알아서 이부분은 반영안하고 아래만 반영한다함 건들필요없다함
     console.log(' [Mock 결제] 요청됨');
+
+    // 영수증에 넘길 데이터 복사
+    setFinalItems(cartItems);
+    setFinalAmount(totalAmount);
+
     setModalMode('complete');   // 완료 모드로 변경
     setModalVisible(true);      // 모달 재표시
 
@@ -151,7 +159,7 @@ const handlePayment = async () => {
     return;
   }
 
-  // ✅ 실제 결제 연동
+  // 실제 결제 연동
   try {
     const res = await axios.post('http://localhost:8080/payment/checkout', {
       user_id: userId,
@@ -160,25 +168,28 @@ const handlePayment = async () => {
     });
 
     if (res.data.status === 'success') {
-      console.log('✅ 결제 완료:', res.data);
+      console.log('결제 완료:', res.data);
 
-      // 응답 받은 데이터로 상태 갱신
-      setCartItems([]); // 결제 후 장바구니 비우기
-      setTotalAmount(res.data.amount || 0);
+      // 영수증에 넘길 데이터 저장
+      setFinalItems(res.data.items);
+      setFinalAmount(res.data.amount || 0);
 
-      // 모달 상태를 결제 완료로 변경
+      // 완료모달 띄우기
       setModalMode('complete');
       setModalVisible(true);
+
+      // 장바구니 비우기
+      setCartItems([]);
+      setTotalAmount(0);
+
     } else {
-      Alert.alert('❌ 결제 실패', res.data.message || '알 수 없는 오류');
+      Alert.alert('결제 실패', res.data.message || '알 수 없는 오류');
     }
   } catch (error) {
-    console.error('❌ 결제 오류:', error);
+    console.error('결제 오류:', error);
     Alert.alert('결제 실패', '네트워크 오류 또는 서버 문제입니다.');
   }
 };
-
-
 
   const renderItem = ({ item }: { item: CartItem }) => (
     <View style={styles.itemRow}>
@@ -235,16 +246,17 @@ const handlePayment = async () => {
         onConfirm={handlePayment}
         onViewReceipt={() => {
           setModalVisible(false);
+
+          // 복사해둔 데이터로 push
           router.push({
             pathname: '/receipt',
             params: {
-              amount: totalAmount,
-              items: JSON.stringify(cartItems),
+              amount: finalAmount,
+              items: JSON.stringify(finalItems),
             },
           });
         }}
       />
-
 
       <View style={styles.footer}>
         <Pressable style={styles.payButton} onPress={() => {

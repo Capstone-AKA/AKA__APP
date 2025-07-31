@@ -4,13 +4,13 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "product")
+@Table(name = "store")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProductEntity {
+public class StoreEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,12 +19,12 @@ public class ProductEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "price", nullable = false)
-    private Integer price;
+    @Column(name = "latitude")
+    private Double latitude;
 
-    @Column(name = "barcode", unique = true, nullable = false)
-    private String barcode;
+    @Column(name = "longitude")
+    private Double longitude;
 
-    @Column(name = "image_url")
-    private String imageUrl;
+    @Column(name = "beacon_uuid", unique = true, nullable = false)
+    private String beaconUuid;
 }

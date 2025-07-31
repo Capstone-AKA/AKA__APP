@@ -16,21 +16,23 @@ public class CartItemEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 연관된 카트
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id", insertable = false, updatable = false)
+    @JoinColumn(name = "cart_id", nullable = false)
     private CartEntity cart;
 
     @Column(name = "cart_id")
     private Long cartId;
 
-    // 연관된 상품
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", insertable = false, updatable = false)
     private ProductEntity product;
 
-    @Column(name = "product_id")
-    private Long productId;
-
+    @Column(name = "quantity", nullable = false)
     private Integer quantity;
+
+    @Column(name = "unit_price", nullable = false) // 장바구니에 담을 당시의 단품 가격
+    private Integer unitPrice;
+
+    @Column(name = "total_price", nullable = false) // 이 항목의 총 가격 (unitPrice * quantity)
+    private Integer totalPrice;
 }

@@ -35,4 +35,13 @@ public class CartItemEntity {
 
     @Column(name = "total_price", nullable = false) // 이 항목의 총 가격 (unitPrice * quantity)
     private Integer totalPrice;
+
+    public void updateQuantity(int newQuantity, Integer productUnitPrice) {
+        if (newQuantity <= 0) {
+            throw new IllegalArgumentException("수량은 1 이상이어야 합니다.");
+        }
+        this.quantity = newQuantity;
+        this.unitPrice = productUnitPrice != null ? productUnitPrice : this.unitPrice; // unitPrice 변경 가능성 고려
+        this.totalPrice = this.unitPrice * this.quantity;
+    }
 }

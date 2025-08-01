@@ -50,4 +50,8 @@ public class CartEntity {
     @Builder.Default // @Builder 사용 시 기본값 설정을 위해 필요
     private List<CartItemEntity> cartItems = new ArrayList<>();
 
+    public void addCartItem(CartItemEntity cartItem) {
+        cartItems.add(cartItem);
+        cartItem.setCart(this); // CartItem의 cart 필드 설정
+    }
 }

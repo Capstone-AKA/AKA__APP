@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import RNCheckBox from '@react-native-community/checkbox';
 import {
   View,
   Text,
@@ -11,20 +10,28 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-// ❌ 실제 연동용 import
-// import { login, signup } from '../api/auth';
 import { useAuth } from '../contexts/useAuth';
 
-const CheckBox = Platform.OS === 'web'
-  ? ({ value, onValueChange }: any) => (
-      <input
-        type="checkbox"
-        checked={value}
-        onChange={(e) => onValueChange(e.target.checked)}
-        style={{ width: 20, height: 20, marginRight: 8 }}
-      />
-    )
-  : RNCheckBox;
+// ✅ 커스텀 체크박스 컴포넌트 (Expo Go에서 작동 가능)
+function CheckBox({ value, onValueChange }: { value: boolean; onValueChange: (val: boolean) => void }) {
+  return (
+    <TouchableOpacity
+      onPress={() => onValueChange(!value)}
+      style={{
+        width: 20,
+        height: 20,
+        borderWidth: 1,
+        borderColor: '#000',
+        marginRight: 8,
+        backgroundColor: value ? '#2ecc71' : '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {value && <Text style={{ color: '#fff', fontWeight: 'bold' }}>✔</Text>}
+    </TouchableOpacity>
+  );
+}
 
 export default function AuthScreen() {
   const [tab, setTab] = useState<'login' | 'signup'>('login');
@@ -32,13 +39,11 @@ export default function AuthScreen() {
 
   const { login: setUser } = useAuth();
 
-  // 로그인 상태
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [autoLogin, setAutoLogin] = useState(false);
   const [error, setError] = useState('');
 
-  // 회원가입 상태
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -47,7 +52,6 @@ export default function AuthScreen() {
 
   const handleLogin = async () => {
     try {
-      // ✅ 테스트용 더미 유저 로그인
       const dummyUser = {
         id: 1,
         email: loginEmail || 'test@example.com',
@@ -55,13 +59,6 @@ export default function AuthScreen() {
       };
       setUser(dummyUser);
       router.replace('/home');
-
-      // ❌ 실제 연동용
-      /*
-      const userData = await login({ email: loginEmail, password: loginPassword });
-      setUser(userData);
-      router.replace('/home');
-      */
     } catch (error: any) {
       Alert.alert('로그인 실패', '테스트용 로그인에서 오류 발생');
     }
@@ -78,7 +75,6 @@ export default function AuthScreen() {
     }
 
     try {
-      // ✅ 테스트용 더미 유저 회원가입
       const dummyUser = {
         id: 1,
         email: signupEmail || 'test@example.com',
@@ -86,18 +82,6 @@ export default function AuthScreen() {
       };
       setUser(dummyUser);
       router.replace('/home');
-
-      // ❌ 실제 연동용
-      /*
-      const userInfo = await signup({
-        email: signupEmail,
-        password: signupPassword,
-        name: nickname,
-        userId: signupEmail,
-      });
-      setUser(userInfo);
-      router.replace('/home');
-      */
     } catch (e) {
       Alert.alert('회원가입 실패', '테스트용 가입에서 오류 발생');
     }
@@ -105,7 +89,6 @@ export default function AuthScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* 탭 */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, tab === 'login' && styles.activeTab]}

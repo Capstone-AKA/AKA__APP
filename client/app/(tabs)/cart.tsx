@@ -151,11 +151,16 @@ export default function CartScreen() {
         <PaymentModal
           visible={modalVisible}
           mode={modalMode}
-          onClose={() => setModalVisible(false)}
+          onClose={() => {
+            setModalVisible(false);
+            if (modalMode === 'complete') {
+              router.push('/home'); // 결제 완료 후 X 버튼 눌렀을 때 홈으로 이동
+            }
+          }}
           onConfirm={handlePayment}
           onViewReceipt={() => {
             setModalVisible(false);
-            router.push({ pathname: '/receipt', params: { amount: finalAmount, items: JSON.stringify(finalItems) } });
+            router.push({ pathname: '/receipt', params: { payment_id: 'test' } });
           }}
         />
 

@@ -1,7 +1,7 @@
 package com.app.aka.service;
 
-import com.app.aka.dto.CartItemAddRequestDto;
 import com.app.aka.dto.CartDetailResponseDto;
+import com.app.aka.dto.CartItemAddRequestDto;
 import com.app.aka.dto.CartItemResponseDto;
 import com.app.aka.entity.CartEntity;
 import com.app.aka.entity.CartItemEntity;
@@ -13,10 +13,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
-
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +25,8 @@ public class CartItemService {
     private final ProductRepository productRepository;
     private final CartItemRepository cartItemRepository;
 
-    public CartDetailResponseDto addOrUpdateItemsToCart(CartItemAddRequestDto request) {
+    //상품 추가
+    public CartDetailResponseDto addItemsToCart(CartItemAddRequestDto request) {
         CartEntity cart = cartRepository.findByCartCode(request.getCartCode())
                 .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다: " + request.getCartCode()));
 
@@ -35,27 +34,21 @@ public class CartItemService {
             throw new IllegalStateException("활성화되지 않았거나 사용자에게 할당되지 않은 카트입니다.");
         }
 
-        int totalAmountChange = 0;
+        int addedAmount = 0;
 
         for (String productIdentifier : request.getProductIdentifiers()) {
-            // 이미지 식별자로 상품 조회
-            ProductEntity product = productRepository.findByImageIdentifier(productIdentifier)
+            ProductEntity product = productRepository.findByName(productIdentifier)
                     .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + productIdentifier));
 
+            Optional<CartItemEntity> existingCartItemOpt = cartItemRepository.findByCartAndProduct(cart, product);
 
-            Optional<CartItemEntity> existingCartItemOptional =
-                    cartItemRepository.findByCartAndProduct(cart, product);
-
-            if (existingCartItemOptional.isPresent()) {
-                // 이미 담겨있다면 수량만 1 증가
-                CartItemEntity existingCartItem = existingCartItemOptional.get();
-                int oldQuantity = existingCartItem.getQuantity();
-
-                existingCartItem.updateQuantity(oldQuantity + 1, product.getPrice());
-                cartItemRepository.save(existingCartItem);
-                totalAmountChange += product.getPrice();
+            if (existingCartItemOpt.isPresent()) {
+                // 이미 담겨있으면 수량 +1
+                CartItemEntity existing = existingCartItemOpt.get();
+                existing.updateQuantity(existing.getQuantity() + 1, product.getPrice());
+                cartItemRepository.save(existing);
             } else {
-                // 새로 담는 상품이라면 CartItemEntity 생성
+                // 처음 담는 상품이면 새로 추가
                 CartItemEntity newCartItem = CartItemEntity.builder()
                         .cart(cart)
                         .product(product)
@@ -65,28 +58,89 @@ public class CartItemService {
                         .build();
                 cartItemRepository.save(newCartItem);
                 cart.addCartItem(newCartItem);
-                totalAmountChange += product.getPrice();
             }
+
+            addedAmount += product.getPrice();
         }
 
-        cart.setTotalAmount(cart.getTotalAmount() + totalAmountChange);
+        cart.setTotalAmount(Optional.ofNullable(cart.getTotalAmount()).orElse(0) + addedAmount);
         cartRepository.save(cart);
 
-        return convertToCartDetailResponseDto(cart);
+        return getCartDetail(cart.getCartCode());
     }
 
-    private CartDetailResponseDto convertToCartDetailResponseDto(CartEntity cart) {
-        // 이 메서드가 호출될 때 cart.getCartItems()는 프록시 객체이므로, 스트림 처리 시 실제 아이템을 로드합니다.
-        List<CartItemResponseDto> itemDtos = cart.getCartItems().stream()
-                .map(item -> CartItemResponseDto.builder()
-                        .cartItemId(item.getId())
-                        .productId(item.getProduct().getId())
-                        .productName(item.getProduct().getName())
-                        .productImageUrl(item.getProduct().getImageUrl())
-                        .quantity(item.getQuantity())
-                        .unitPrice(item.getUnitPrice())
-                        .totalPrice(item.getTotalPrice())
-                        .build())
+    //(+) 버튼 수량 증가
+    public CartDetailResponseDto increaseQuantity(Long cartItemId) {
+        CartItemEntity cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new RuntimeException("해당 아이템을 찾을 수 없습니다."));
+
+        // 수량 증가 (단가 유지)
+        cartItem.updateQuantity(cartItem.getQuantity() + 1, cartItem.getUnitPrice());
+        cartItemRepository.save(cartItem);
+
+        CartEntity cart = cartItem.getCart();
+        cart.setTotalAmount(Optional.ofNullable(cart.getTotalAmount()).orElse(0) + cartItem.getUnitPrice());
+        cartRepository.save(cart);
+
+        return getCartDetail(cart.getCartCode());
+    }
+
+    //(-) 버튼 수량 감소
+    public CartDetailResponseDto decreaseQuantity(Long cartItemId) {
+        CartItemEntity cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new RuntimeException("해당 아이템을 찾을 수 없습니다."));
+
+        if (cartItem.getQuantity() <= 1) {
+            throw new IllegalArgumentException("상품 수량은 1보다 작을 수 없습니다.");
+        }
+
+        cartItem.updateQuantity(cartItem.getQuantity() - 1, cartItem.getUnitPrice());
+        cartItemRepository.save(cartItem);
+
+        CartEntity cart = cartItem.getCart();
+        cart.setTotalAmount(Optional.ofNullable(cart.getTotalAmount()).orElse(0) - cartItem.getUnitPrice());
+        cartRepository.save(cart);
+
+        return getCartDetail(cart.getCartCode());
+    }
+
+    //장바구니 조회
+    public CartDetailResponseDto getCartDetail(String cartCode) {
+        CartEntity cart = cartRepository.findByCartCode(cartCode)
+                .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다: " + cartCode));
+
+        List<CartItemEntity> items = cartItemRepository.findByCart(cart);
+
+        int recalculatedTotal = items.stream()
+                .mapToInt(CartItemEntity::getTotalPrice)
+                .sum();
+
+        if (!Objects.equals(Optional.ofNullable(cart.getTotalAmount()).orElse(0), recalculatedTotal)) {
+            cart.setTotalAmount(recalculatedTotal);
+            cartRepository.save(cart);
+        }
+
+        return convertToCartDetailResponseDto(cart, items);
+    }
+
+    private CartDetailResponseDto convertToCartDetailResponseDto(CartEntity cart, List<CartItemEntity> items) {
+        List<CartItemResponseDto> itemDtos = items.stream()
+                .map(item -> {
+                    // 혹시 모를 product null 대비(데이터 불량)
+                    ProductEntity p = item.getProduct();
+                    if (p == null) {
+                        throw new IllegalStateException("CartItem(" + item.getId() + ")의 상품 정보가 없습니다.");
+                    }
+                    return CartItemResponseDto.builder()
+                            .cartItemId(item.getId())
+                            .productId(p.getId())
+                            .productName(p.getName())
+                            .productImageUrl(p.getImageUrl())
+                            .quantity(item.getQuantity())
+                            .unitPrice(item.getUnitPrice())
+                            .totalPrice(item.getTotalPrice())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         return CartDetailResponseDto.builder()

@@ -29,10 +29,6 @@ public class CartService {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        if (!cart.getStoreId().equals(user.getCurrentStoreId())) {
-            throw new IllegalStateException("현재 매장과 카트 매장이 다릅니다.");
-        }
-
         cart.setUserId(userId);
         cart.setIsActive(true);
         cart.setStatus("assigned");
@@ -75,9 +71,6 @@ public class CartService {
         cart.setIsActive(false);
         cart.setStatus("waiting");
         cart.setTotalAmount(0);
-        // cart.setCreatedAt(null);
-        // cart.setEnteredAt(null);
-
         cartRepository.save(cart);
 
         //사용자의 current_store_id 초기화 또는 업데이트

@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "cart_item")
+@Table(name = "cartitem")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,11 +20,8 @@ public class CartItemEntity {
     @JoinColumn(name = "cart_id", nullable = false)
     private CartEntity cart;
 
-    @Column(name = "cart_id")
-    private Long cartId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", insertable = false, updatable = false)
+    @JoinColumn(name = "product_id", nullable = false)
     private ProductEntity product;
 
     @Column(name = "quantity", nullable = false)

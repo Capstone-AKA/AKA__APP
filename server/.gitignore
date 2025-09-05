@@ -28,6 +28,7 @@ out/
 
 # 배포용 프로퍼티 파일 무시
 /src/main/resources/application-deploy.properties
+/src/main/resources/application.properties
 
 
 ### NetBeans ###

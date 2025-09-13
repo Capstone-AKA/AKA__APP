@@ -18,9 +18,10 @@ public class CartService {
     private final CartRepository cartRepository;
     private final UserRepository userRepository;
 
+    //1. 카드 할당 받기
     public void assignCartToUser(Long userId, Long cartNumber) {
         CartEntity cart = cartRepository.findByCartNumber(cartNumber)
-                .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다."));
+                .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다: " + cartNumber));
 
         if (Boolean.TRUE.equals(cart.getIsActive()) && cart.getUserId() != null) {
             throw new RuntimeException("이미 다른 사용자에게 할당된 카트입니다.");
@@ -30,53 +31,55 @@ public class CartService {
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
         cart.setUserId(userId);
-        cart.setIsActive(true);
-        cart.setStatus("assigned");
+        cart.setIsActive(false); // 아직 매장 입장은 안했음
+        cart.setStatus("ASSIGNED");
         cartRepository.save(cart);
     }
 
-    public void cartEnterByBle(Long cartNumber, Long storeId) {
-        CartEntity cart = cartRepository.findByCartNumber(cartNumber)
-                .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다."));
+    // 2. BLE 입장
+    public void cartEnterByBle(Long userId, Long storeId) {
+        CartEntity cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("사용자에게 할당된 카트를 찾을 수 없습니다."));
 
         //카트가 할당된 매장과 현재 입장 매장이 다른 경우를 방지
-        if (!cart.getStoreId().equals(storeId)) {
-            throw new IllegalStateException("카트가 할당된 매장 [" + cart.getStoreId() + "]과 현재 입장한 매장 [" + storeId + "]이 다릅니다.");
+        if (cart.getStoreId() != null && !cart.getStoreId().equals(storeId)) {
+            throw new IllegalStateException("카트가 이미 다른 매장에 할당되어 있습니다.");
         }
 
-        cart.setStatus("entered");
+        cart.setStoreId(storeId);
+        cart.setStatus("ENTERED");
         cart.setIsActive(true);
         cart.setCreatedAt(LocalDateTime.now());
         cartRepository.save(cart);
 
-        if (cart.getUserId() != null) {
-            UserEntity user = userRepository.findById(cart.getUserId())
-                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
-
-            user.setCurrentStoreId(storeId);
-            user.setLastLoginAt(LocalDateTime.now());
-            userRepository.save(user);
-        }
+        // 사용자 정보 업데이트
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        user.setCurrentStoreId(storeId);
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
     }
 
-    public void exitCart(Long userId, Long cartNumber) {
-        CartEntity cart = cartRepository.findByCartNumber(cartNumber)
+    //3. 카트 퇴장
+    public void exitCart(Long userId, Long storeId, Long cartNumber) {
+        CartEntity cart = cartRepository.findByStoreIdAndCartNumber(storeId, cartNumber)
                 .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다."));
 
-        // 해당 카트가 현재 요청한 사용자에게 할당되어 있는지 확인
         if (cart.getUserId() == null || !cart.getUserId().equals(userId)) {
             throw new IllegalArgumentException("해당 카트는 사용자에게 할당되어 있지 않거나, 다른 사용자가 할당한 카트입니다.");
         }
+
         cart.setUserId(null);
         cart.setIsActive(false);
-        cart.setStatus("waiting");
+        cart.setStatus("WAITING");
         cart.setTotalAmount(0);
+        cart.setStoreId(null); // 매장 정보도 초기화
         cartRepository.save(cart);
 
-        //사용자의 current_store_id 초기화 또는 업데이트
+        // 사용자 정보 업데이트
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-        user.setCurrentStoreId(null); // 사용자의 현재 매장 ID를 null로 초기화
+        user.setCurrentStoreId(null);
         userRepository.save(user);
     }
 }

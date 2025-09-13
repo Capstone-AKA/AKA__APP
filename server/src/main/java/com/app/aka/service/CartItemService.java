@@ -27,8 +27,12 @@ public class CartItemService {
 
     //상품 추가
     public CartDetailResponseDto addItemsToCart(CartItemAddRequestDto request) {
-        CartEntity cart = cartRepository.findByCartCode(request.getCartCode())
-                .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다: " + request.getCartCode()));
+        CartEntity cart = cartRepository.findByStoreIdAndCartNumber(
+                        request.getStoreId(), request.getCartNumber())
+                .orElseThrow(() -> new RuntimeException(
+                        "해당 카트를 찾을 수 없습니다. storeId="
+                                + request.getStoreId() + ", cartNumber=" + request.getCartNumber()
+                ));
 
         if (Boolean.FALSE.equals(cart.getIsActive()) || cart.getUserId() == null) {
             throw new IllegalStateException("활성화되지 않았거나 사용자에게 할당되지 않은 카트입니다.");
@@ -36,7 +40,7 @@ public class CartItemService {
 
         int addedAmount = 0;
 
-        for (String productIdentifier : request.getProductIdentifiers()) {
+        for (String productIdentifier : request.getProductList()) {
             ProductEntity product = productRepository.findByName(productIdentifier)
                     .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + productIdentifier));
 
@@ -66,7 +70,7 @@ public class CartItemService {
         cart.setTotalAmount(Optional.ofNullable(cart.getTotalAmount()).orElse(0) + addedAmount);
         cartRepository.save(cart);
 
-        return getCartDetail(cart.getCartCode());
+        return getCartDetail(request.getStoreId(), request.getCartNumber());
     }
 
     //(+) 버튼 수량 증가
@@ -74,7 +78,6 @@ public class CartItemService {
         CartItemEntity cartItem = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() -> new RuntimeException("해당 아이템을 찾을 수 없습니다."));
 
-        // 수량 증가 (단가 유지)
         cartItem.updateQuantity(cartItem.getQuantity() + 1, cartItem.getUnitPrice());
         cartItemRepository.save(cartItem);
 
@@ -82,7 +85,7 @@ public class CartItemService {
         cart.setTotalAmount(Optional.ofNullable(cart.getTotalAmount()).orElse(0) + cartItem.getUnitPrice());
         cartRepository.save(cart);
 
-        return getCartDetail(cart.getCartCode());
+        return getCartDetail(cart.getStoreId(), cart.getCartNumber());
     }
 
     //(-) 버튼 수량 감소
@@ -101,13 +104,34 @@ public class CartItemService {
         cart.setTotalAmount(Optional.ofNullable(cart.getTotalAmount()).orElse(0) - cartItem.getUnitPrice());
         cartRepository.save(cart);
 
-        return getCartDetail(cart.getCartCode());
+        return getCartDetail(cart.getStoreId(), cart.getCartNumber());
     }
 
-    //장바구니 조회
-    public CartDetailResponseDto getCartDetail(String cartCode) {
-        CartEntity cart = cartRepository.findByCartCode(cartCode)
-                .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다: " + cartCode));
+    public CartDetailResponseDto deleteItem(Long cartItemId) {
+        CartItemEntity cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new RuntimeException("해당 아이템을 찾을 수 없습니다."));
+
+        CartEntity cart = cartItem.getCart();
+
+        // 총액에서 빼기
+        cart.setTotalAmount(
+                Optional.ofNullable(cart.getTotalAmount()).orElse(0) - cartItem.getTotalPrice()
+        );
+
+        // 아이템 삭제
+        cartItemRepository.delete(cartItem);
+        cartRepository.save(cart);
+
+        // 최신 장바구니 반환
+        return getCartDetail(cart.getStoreId(), cart.getCartNumber());
+    }
+
+
+    // 장바구니 조회
+    public CartDetailResponseDto getCartDetail(Long storeId, Long cartNumber) {
+        CartEntity cart = cartRepository.findByStoreIdAndCartNumber(storeId, cartNumber)
+                .orElseThrow(() -> new RuntimeException(
+                        "해당 카트를 찾을 수 없습니다. storeId=" + storeId + ", cartNumber=" + cartNumber));
 
         List<CartItemEntity> items = cartItemRepository.findByCart(cart);
 
@@ -144,7 +168,7 @@ public class CartItemService {
                 .collect(Collectors.toList());
 
         return CartDetailResponseDto.builder()
-                .cartCode(cart.getCartCode())
+                .cartNumber(cart.getCartNumber())
                 .userId(cart.getUserId())
                 .storeId(cart.getStoreId())
                 .totalAmount(cart.getTotalAmount())

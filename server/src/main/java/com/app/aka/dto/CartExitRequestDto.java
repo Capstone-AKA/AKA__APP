@@ -4,5 +4,6 @@ import lombok.Data;
 
 @Data
 public class CartExitRequestDto {
+    private Long storeId;
     private Long cartNumber;
 }

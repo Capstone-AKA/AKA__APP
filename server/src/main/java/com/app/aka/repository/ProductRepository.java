@@ -8,6 +8,4 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<ProductEntity, Long> {
     // 상품명을 기준으로 조회
     Optional<ProductEntity> findByName(String name);
-    //필요하면 이미지 식별자
-    Optional<ProductEntity> findByImageIdentifier(String imageIdentifier);
 }

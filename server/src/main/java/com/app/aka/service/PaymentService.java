@@ -22,7 +22,8 @@ public class PaymentService {
     private final CartRepository cartRepository;
 
     public ReceiptResponseDto processPayment(PaymentRequestDto request, Long userId) {
-        CartEntity cart = cartRepository.findByCartCode(request.getCartCode())
+        // cartNumber로 카트 조회
+        CartEntity cart = cartRepository.findByCartNumber(request.getCartNumber())
                 .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다."));
 
         if (cart.getUserId() == null || !cart.getUserId().equals(userId)) {

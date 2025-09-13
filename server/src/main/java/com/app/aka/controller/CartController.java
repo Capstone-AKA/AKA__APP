@@ -20,7 +20,7 @@ public class CartController {
 
     @PostMapping("/enter")
     public ResponseEntity<String> enterByBle(@RequestBody CartEnterRequestDto request) {
-        cartService.cartEnterByBle(request.getCartNumber(), request.getStoreId());
+        cartService.cartEnterByBle(request.getUserId(), request.getStoreId());
         return ResponseEntity.ok("BLE 입장이 완료되었습니다.");
     }
 
@@ -40,7 +40,7 @@ public class CartController {
             @AuthenticationPrincipal(expression = "id") Long userId,
             @RequestBody CartExitRequestDto request
     ) {
-        cartService.exitCart(userId, request.getCartNumber());
+        cartService.exitCart(userId, request.getStoreId(), request.getCartNumber());
         return ResponseEntity.ok("카트 퇴장이 완료되었습니다.");
     }
 }

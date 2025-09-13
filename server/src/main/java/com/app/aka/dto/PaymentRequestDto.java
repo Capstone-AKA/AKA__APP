@@ -11,5 +11,5 @@ import lombok.NoArgsConstructor;
 @Builder
 
 public class PaymentRequestDto {
-    private String cartCode;
+    private Long cartNumber;
 }

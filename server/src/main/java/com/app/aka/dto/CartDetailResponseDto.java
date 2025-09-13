@@ -12,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CartDetailResponseDto {
-    private String cartCode;
+    private Long cartNumber;
     private Long userId;
     private Long storeId;
     private Integer totalAmount;

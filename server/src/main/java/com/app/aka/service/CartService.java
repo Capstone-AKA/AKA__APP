@@ -18,8 +18,8 @@ public class CartService {
     private final CartRepository cartRepository;
     private final UserRepository userRepository;
 
-    public void assignCartToUser(Long userId, String cartCode) {
-        CartEntity cart = cartRepository.findByCartCode(cartCode)
+    public void assignCartToUser(Long userId, Long cartNumber) {
+        CartEntity cart = cartRepository.findByCartNumber(cartNumber)
                 .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다."));
 
         if (Boolean.TRUE.equals(cart.getIsActive()) && cart.getUserId() != null) {
@@ -35,8 +35,8 @@ public class CartService {
         cartRepository.save(cart);
     }
 
-    public void cartEnterByBle(String cartCode, Long storeId) {
-        CartEntity cart = cartRepository.findByCartCode(cartCode)
+    public void cartEnterByBle(Long cartNumber, Long storeId) {
+        CartEntity cart = cartRepository.findByCartNumber(cartNumber)
                 .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다."));
 
         //카트가 할당된 매장과 현재 입장 매장이 다른 경우를 방지
@@ -59,8 +59,8 @@ public class CartService {
         }
     }
 
-    public void exitCart(Long userId, String cartCode) {
-        CartEntity cart = cartRepository.findByCartCode(cartCode)
+    public void exitCart(Long userId, Long cartNumber) {
+        CartEntity cart = cartRepository.findByCartNumber(cartNumber)
                 .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다."));
 
         // 해당 카트가 현재 요청한 사용자에게 할당되어 있는지 확인

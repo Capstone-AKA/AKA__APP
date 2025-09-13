@@ -39,8 +39,8 @@ public class CartEntity {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "cart_code", unique = true, nullable = false) // QR 매칭용
-    private String cartCode;
+    @Column(name = "cart_number", unique = true, nullable = false)
+    private Long cartNumber;
 
     @Column(name = "status", nullable = false) // 상태 필드 추가 (waiting, assigned, entered 등)
     private String status;

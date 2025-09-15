@@ -2,7 +2,9 @@ package com.app.aka.controller;
 
 import com.app.aka.dto.CardRequestDto;
 import com.app.aka.dto.CardResponseDto;
+import com.app.aka.security.oauth2.TokenProvider;
 import com.app.aka.service.CardService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,13 +17,15 @@ import java.util.List;
 public class CardController {
 
     private final CardService cardService;
+    private final TokenProvider tokenProvider;
 
     // 카드 등록
     @PostMapping
     public ResponseEntity<CardResponseDto> addCard(
             @RequestBody CardRequestDto request,
-            @RequestHeader("X-User-Id") Long userId
+            HttpServletRequest httpRequest
     ) {
+        Long userId = tokenProvider.getUserIdFromRequest(httpRequest);
         return ResponseEntity.ok(cardService.addCard(userId, request));
     }
 
@@ -29,8 +33,9 @@ public class CardController {
     @DeleteMapping("/{cardId}")
     public ResponseEntity<Void> deleteCard(
             @PathVariable Long cardId,
-            @RequestHeader("X-User-Id") Long userId
+            HttpServletRequest httpRequest
     ) {
+        Long userId = tokenProvider.getUserIdFromRequest(httpRequest);
         cardService.deleteCard(userId, cardId);
         return ResponseEntity.noContent().build();
     }
@@ -38,8 +43,9 @@ public class CardController {
     // 내 카드 목록 조회
     @GetMapping
     public ResponseEntity<List<CardResponseDto>> getCards(
-            @RequestHeader("X-User-Id") Long userId
+            HttpServletRequest httpRequest
     ) {
+        Long userId = tokenProvider.getUserIdFromRequest(httpRequest);
         return ResponseEntity.ok(cardService.getCards(userId));
     }
 }

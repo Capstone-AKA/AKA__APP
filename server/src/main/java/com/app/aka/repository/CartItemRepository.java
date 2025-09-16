@@ -14,5 +14,7 @@ public interface CartItemRepository extends JpaRepository<CartItemEntity, Long> 
 
     // 특정 카트에 속한 모든 CartItem을 찾는 메서드
     List<CartItemEntity> findByCart(CartEntity cart);
+
+    void deleteAllByCart(CartEntity cart);
 }
 

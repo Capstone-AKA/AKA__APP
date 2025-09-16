@@ -2,6 +2,7 @@ package com.app.aka.service;
 
 import com.app.aka.entity.CartEntity;
 import com.app.aka.entity.UserEntity;
+import com.app.aka.repository.CartItemRepository;
 import com.app.aka.repository.CartRepository;
 import com.app.aka.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -17,6 +18,7 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final UserRepository userRepository;
+    private final CartItemRepository cartItemRepository;
 
     //1. 카드 할당 받기
     public void assignCartToUser(Long userId, Long cartNumber) {
@@ -69,6 +71,10 @@ public class CartService {
             throw new IllegalArgumentException("해당 카트는 사용자에게 할당되어 있지 않거나, 다른 사용자가 할당한 카트입니다.");
         }
 
+        //카트에 담긴 아이템 전부 삭제
+        cartItemRepository.deleteAllByCart(cart);
+
+        //카트 초기화
         cart.setUserId(null);
         cart.setIsActive(false);
         cart.setStatus("WAITING");

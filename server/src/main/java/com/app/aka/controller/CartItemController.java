@@ -4,6 +4,7 @@ import com.app.aka.dto.CartDetailResponseDto;
 import com.app.aka.dto.CartItemAddRequestDto;
 import com.app.aka.dto.DeviceProductRequestDto;
 import com.app.aka.service.CartItemService;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,6 +18,7 @@ public class CartItemController {
     private final CartItemService cartItemService;
 
     // Jetson Nano: 상품 추가
+    @JsonProperty("product_list")
     @PostMapping("/items/from-device")
     public ResponseEntity<CartDetailResponseDto> addItemsFromDevice(
             @RequestBody DeviceProductRequestDto request,

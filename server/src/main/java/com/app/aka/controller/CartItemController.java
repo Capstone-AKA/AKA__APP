@@ -16,14 +16,6 @@ public class CartItemController {
 
     private final CartItemService cartItemService;
 
-
-    @PostMapping("/items")
-    public ResponseEntity<CartDetailResponseDto> addItemsToCart(
-            @RequestBody CartItemAddRequestDto request
-    ) {
-        return ResponseEntity.ok(cartItemService.addItemsToCart(request));
-    }
-
     // Jetson Nano: 상품 추가
     @PostMapping("/items/from-device")
     public ResponseEntity<CartDetailResponseDto> addItemsFromDevice(

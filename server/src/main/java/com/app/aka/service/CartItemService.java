@@ -26,48 +26,27 @@ public class CartItemService {
     private final ProductRepository productRepository;
     private final CartItemRepository cartItemRepository;
 
-    //상품 추가
-    public CartDetailResponseDto addItemsToCart(CartItemAddRequestDto request) {
-        CartEntity cart = cartRepository.findByStoreIdAndCartNumber(
-                        request.getStoreId(), request.getCartNumber())
-                .orElseThrow(() -> new RuntimeException(
-                        "해당 카트를 찾을 수 없습니다. storeId=" + request.getStoreId()
-                                + ", cartNumber=" + request.getCartNumber()
-                ));
-
-        if (Boolean.FALSE.equals(cart.getIsActive()) || cart.getUserId() == null) {
-            throw new IllegalStateException("활성화되지 않았거나 사용자에게 할당되지 않은 카트입니다.");
-        }
-
-        processProducts(cart, request.getProductList());
-        return getCartDetail(request.getStoreId(), request.getCartNumber());
-    }
-
+    // Jetson Nano → 상품 추가 (userId 기반)
     public CartDetailResponseDto addItemsFromDevice(Long userId, DeviceProductRequestDto request) {
-        // userId 기준으로 현재 활성화된 카트 찾기
-        CartEntity cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException(
-                        "사용자(" + userId + ")에게 활성화된 카트가 없습니다."
-                ));
+        // 유저가 할당받은 활성화된 카트 찾기
+        CartEntity cart = cartRepository.findByUserIdAndIsActiveTrue(userId)
+                .orElseThrow(() -> new RuntimeException("사용자에게 할당된 활성화된 카트를 찾을 수 없습니다. userId=" + userId));
 
-        processProducts(cart, request.getProductList());
-        return getCartDetail(cart.getStoreId(), cart.getCartNumber());
-    }
-
-    private void processProducts(CartEntity cart, List<String> productList) {
         int addedAmount = 0;
 
-        for (String productIdentifier : productList) {
+        for (String productIdentifier : request.getProductList()) {
             ProductEntity product = productRepository.findByName(productIdentifier)
                     .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + productIdentifier));
 
             Optional<CartItemEntity> existingCartItemOpt = cartItemRepository.findByCartAndProduct(cart, product);
 
             if (existingCartItemOpt.isPresent()) {
+                // 이미 담겨있으면 수량 +1
                 CartItemEntity existing = existingCartItemOpt.get();
                 existing.updateQuantity(existing.getQuantity() + 1, product.getPrice());
                 cartItemRepository.save(existing);
             } else {
+                // 처음 담는 상품이면 새로 추가
                 CartItemEntity newCartItem = CartItemEntity.builder()
                         .cart(cart)
                         .product(product)
@@ -84,8 +63,9 @@ public class CartItemService {
 
         cart.setTotalAmount(Optional.ofNullable(cart.getTotalAmount()).orElse(0) + addedAmount);
         cartRepository.save(cart);
-    }
 
+        return getCartDetail(cart.getStoreId(), cart.getCartNumber());
+    }
 
     //(+) 버튼 수량 증가
     public CartDetailResponseDto increaseQuantity(Long cartItemId) {

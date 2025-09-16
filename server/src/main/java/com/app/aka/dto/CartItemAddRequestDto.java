@@ -12,7 +12,5 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class CartItemAddRequestDto {
-    private Long storeId;
-    private Long cartNumber;
     private List<String> productList;
 }

@@ -1,7 +1,6 @@
 package com.app.aka.service;
 
 import com.app.aka.dto.CartDetailResponseDto;
-import com.app.aka.dto.CartItemAddRequestDto;
 import com.app.aka.dto.CartItemResponseDto;
 import com.app.aka.dto.DeviceProductRequestDto;
 import com.app.aka.entity.CartEntity;
@@ -26,11 +25,16 @@ public class CartItemService {
     private final ProductRepository productRepository;
     private final CartItemRepository cartItemRepository;
 
-    // Jetson Nano → 상품 추가 (userId 기반)
-    public CartDetailResponseDto addItemsFromDevice(Long userId, DeviceProductRequestDto request) {
-        // 유저가 할당받은 활성화된 카트 찾기
-        CartEntity cart = cartRepository.findByUserIdAndIsActiveTrue(userId)
-                .orElseThrow(() -> new RuntimeException("사용자에게 할당된 활성화된 카트를 찾을 수 없습니다. userId=" + userId));
+    // Jetson Nano 상품 추가
+    public CartDetailResponseDto addItemsFromDevice(DeviceProductRequestDto request) {
+        // cartNumber 로 카트 찾기
+        CartEntity cart = cartRepository.findByCartNumber(request.getCartNumber())
+                .orElseThrow(() -> new RuntimeException(
+                        "해당 카트를 찾을 수 없습니다. cartNumber=" + request.getCartNumber()));
+
+        if (Boolean.FALSE.equals(cart.getIsActive()) || cart.getUserId() == null) {
+            throw new IllegalStateException("활성화되지 않았거나 사용자에게 할당되지 않은 카트입니다.");
+        }
 
         int addedAmount = 0;
 

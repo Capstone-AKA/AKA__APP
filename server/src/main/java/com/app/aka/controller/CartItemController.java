@@ -1,11 +1,11 @@
 package com.app.aka.controller;
 
 import com.app.aka.dto.CartDetailResponseDto;
+import com.app.aka.dto.CartItemDeltaListDto;
 import com.app.aka.dto.DeviceProductRequestDto;
 import com.app.aka.service.CartItemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,7 +17,7 @@ public class CartItemController {
 
     // Jetson Nano: 상품 추가
     @PostMapping("/items/from-device")
-    public ResponseEntity<CartDetailResponseDto> addItemsFromDevice(
+    public ResponseEntity<CartItemDeltaListDto> addItemsFromDevice(
             @RequestBody DeviceProductRequestDto request
     ) {
         return ResponseEntity.ok(cartItemService.addItemsFromDevice(request));
@@ -25,23 +25,23 @@ public class CartItemController {
 
     // 수량 증가 (+ 버튼)
     @PatchMapping("/items/{cartItemId}/increase")
-    public ResponseEntity<CartDetailResponseDto> increaseItemQuantity(@PathVariable Long cartItemId) {
+    public ResponseEntity<CartItemDeltaListDto> increaseItemQuantity(@PathVariable Long cartItemId) {
         return ResponseEntity.ok(cartItemService.increaseQuantity(cartItemId));
     }
 
     // 수량 감소 (- 버튼)
     @PatchMapping("/items/{cartItemId}/decrease")
-    public ResponseEntity<CartDetailResponseDto> decreaseItemQuantity(@PathVariable Long cartItemId) {
+    public ResponseEntity<CartItemDeltaListDto> decreaseItemQuantity(@PathVariable Long cartItemId) {
         return ResponseEntity.ok(cartItemService.decreaseQuantity(cartItemId));
     }
 
     // 상품 삭제
     @DeleteMapping("/items/{cartItemId}")
-    public ResponseEntity<CartDetailResponseDto> deleteItem(@PathVariable Long cartItemId) {
+    public ResponseEntity<CartItemDeltaListDto> deleteItem(@PathVariable Long cartItemId) {
         return ResponseEntity.ok(cartItemService.deleteItem(cartItemId));
     }
 
-    // 장바구니 조회
+    // 장바구니 전체 조회
     @GetMapping("/{storeId}/{cartNumber}")
     public ResponseEntity<CartDetailResponseDto> getCartDetail(
             @PathVariable Long storeId,

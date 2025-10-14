@@ -1,0 +1,14 @@
+{
+  "extends": "./node_modules/expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "allowJs": true
+  },
+  "include": ["app", "api", "components", "contexts", "hooks", "types"]
+}
+// {
+//   "compilerOptions": {},
+//   "extends": "expo/tsconfig.base"
+// }

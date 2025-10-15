@@ -1,5 +1,6 @@
 package com.app.aka.service;
 
+import com.app.aka.dto.PaymentHistoryDto;
 import com.app.aka.dto.PaymentRequestDto;
 import com.app.aka.dto.ReceiptItemDto;
 import com.app.aka.dto.ReceiptResponseDto;
@@ -74,4 +75,19 @@ public class PaymentService {
                 .items(itemDtos)
                 .build();
     }
+
+    public List<PaymentHistoryDto> getPaymentHistory(Long userId) {
+        List<PaymentEntity> payments = paymentRepository.findByUserIdOrderByIssuedAtDesc(userId);
+
+        return payments.stream()
+                .map(payment -> PaymentHistoryDto.builder()
+                        .receiptId(payment.getId())
+                        .issuedAt(payment.getIssuedAt())
+                        .paymentMethod(payment.getMethod())
+                        .amount(payment.getAmount())
+                        .cartId(payment.getCartId())
+                        .build())
+                .toList();
+    }
+
 }

@@ -19,15 +19,17 @@ export function useBLE() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [bleConnected, setBleConnected] = useState(false); // 추가
+  const [bleConnected, setBleConnected] = useState(false);
 
   useEffect(() => {
     requestPermissions();
-
     return () => {
       bleManager.destroy();
     };
   }, []);
+
+  // RSSI 임계값 (너무 약한 신호 제외)
+  const RSSI_THRESHOLD = -70;
 
   // 스캔 시작
   const startScan = () => {
@@ -44,11 +46,13 @@ export function useBLE() {
         return;
       }
 
-      if (device && device.name) {
-        console.log("발견:", device.name, device.id);
-
+      // RSSI 필터링 + 실시간 갱신
+      if (device && device.name && device.rssi !== null && device.rssi > RSSI_THRESHOLD) {
         setDevices((prev) => {
-          if (prev.find((d) => d.id === device.id)) return prev;
+          const exists = prev.find((d) => d.id === device.id);
+          if (exists) {
+            return prev.map((d) => (d.id === device.id ? device : d));
+          }
           return [...prev, device];
         });
       }
@@ -70,7 +74,7 @@ export function useBLE() {
       const device = await bleManager.connectToDevice(deviceId);
       await device.discoverAllServicesAndCharacteristics();
       setConnectedDevice(device);
-      setBleConnected(true); // BLE 연결됨 표시
+      setBleConnected(true);
       console.log("BLE 연결 성공:", device.name);
       return device;
     } catch (e) {
@@ -78,13 +82,13 @@ export function useBLE() {
     }
   };
 
-  // 기기 연결 해제
+  // 연결 해제
   const disconnectFromDevice = async () => {
     try {
       if (connectedDevice) {
         await bleManager.cancelDeviceConnection(connectedDevice.id);
         setConnectedDevice(null);
-        setBleConnected(false); // BLE 해제 표시
+        setBleConnected(false);
         console.log("BLE 연결 해제");
       }
     } catch (e) {
@@ -136,7 +140,7 @@ export function useBLE() {
     devices,
     isScanning,
     connectedDevice,
-    bleConnected, 
+    bleConnected,
     startScan,
     stopScan,
     connectToDevice,

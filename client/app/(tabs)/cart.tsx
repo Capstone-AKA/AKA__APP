@@ -13,7 +13,8 @@ import { useRouter } from "expo-router";
 import { useStore } from "../../contexts/useStore";
 import { useBLE } from "../../hooks/useBLE";
 import PaymentModal from "../../components/PaymentModal";
-import api, { BASE_URL } from "../../api/api"; // axios 인스턴스 + BASE_URL 가져오기
+import { useLocalSearchParams } from "expo-router";
+import api from "../../api/api"; // axios 인스턴스 + BASE_URL 가져오기
 import { EXPO_PUBLIC_USE_MOCK } from "@env"; // 환경 변수로 mock 모드 제어
 
 // 타입 정의

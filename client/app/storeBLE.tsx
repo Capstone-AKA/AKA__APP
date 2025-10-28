@@ -13,7 +13,6 @@ import { useBLE } from "../hooks/useBLE";
 import { useStore } from "../contexts/useStore";
 import api from "../api/api";
 
-// .env에서 설정값 불러오기
 const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === "true";
 
 export default function StoreBLE() {
@@ -24,8 +23,10 @@ export default function StoreBLE() {
 
   const [cartInput, setCartInput] = useState("");
   const [cartRegistered, setCartRegistered] = useState(false);
+  const [entryDetected, setEntryDetected] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
 
-  // 카트 등록 (env 기반으로 mock/real 분기)
+  // 카트 등록
   const handleCartRegister = async () => {
     if (!cartInput) return alert("카트 번호를 입력해주세요.");
     const parsedCart = parseInt(cartInput, 10);
@@ -33,15 +34,13 @@ export default function StoreBLE() {
 
     try {
       if (USE_MOCK) {
-        console.log(" MOCK MODE: 실제 서버 요청 없이 테스트 실행 중");
-        await new Promise((res) => setTimeout(res, 500)); // 딜레이만 줌
+        console.log("MOCK MODE: 실제 서버 요청 없이 테스트 실행 중");
+        await new Promise((res) => setTimeout(res, 500));
       } else {
-        // 실제 백엔드 연동 (api.ts 통해 BASE_URL 자동 적용)
         const res = await api.post("/api/cart/assign", { cartNumber: parsedCart });
         console.log("서버 응답:", res.data);
       }
 
-      // 공통 처리 (성공 시 BLE 스캔 시작)
       setCartNumber(parsedCart);
       setCartRegistered(true);
       startScan();
@@ -51,59 +50,76 @@ export default function StoreBLE() {
     }
   };
 
-// 카트 등록 → 서버 전송
-// const handleCartRegister = async () => {
-//   if (!cartInput) return;
-
-//   const parsedCart = parseInt(cartInput, 10);
-//   if (isNaN(parsedCart)) return;
-
-//   try {
-//     // await api.post("/api/cart/assign", { cartNumber: parsedCart });
-
-//     setCartNumber(parsedCart);
-//     setCartRegistered(true);
-
-//     // 스캔 시작
-//     startScan();
-//   } catch (err) {
-//     console.error("카트 등록 실패:", err);
-//   }
-// };
-
-  // 매장 입장 감지
+  // BLE 입장/퇴장 감지
   useEffect(() => {
     if (!cartRegistered) return;
 
-    const entryDevice = devices.find((d) => d.name === "MART01");
-    if (entryDevice && !storeId) {
-      console.log("입장 기기 발견:", entryDevice.name);
-      stopScan();
-      setStoreId(1);
-      router.replace("/cart");
+    const martDevice = devices.find((d) => d.name === "MART01");
+
+    if (martDevice && martDevice.rssi !== null) {
+      // 입장
+      if (!entryDetected && !storeId) {
+        console.log("입장 감지");
+        stopScan();
+        setStoreId(1);
+        setEntryDetected(true);
+        router.replace("/cart");
+
+        setTimeout(() => {
+          console.log("퇴장 감지 대기 시작");
+          startScan();
+        }, 3000);
+      }
+
+      // 퇴장
+      else if (entryDetected && storeId && !isPaying) {
+        console.log("퇴장 감지");
+        handleAutoPayment();
+      }
     }
-  }, [devices, cartRegistered, storeId]);
+  }, [devices]);
 
-  // 매장 퇴장 감지
-  useEffect(() => {
-    if (!storeId) return;
+  // 자동 결제 로직 (결제 후 /cart로 이동해 모달 표시)
+  const handleAutoPayment = async () => {
+    if (isPaying) return;
+    setIsPaying(true);
 
-    const exitDevice = devices.find((d) => d.name === "MART_EXIT");
-    if (exitDevice) {
-      console.log("퇴장 기기 발견:", exitDevice.name);
+    try {
+      if (USE_MOCK) {
+        console.log("MOCK 자동 결제 실행 중...");
+        await new Promise((res) => setTimeout(res, 1000));
+        console.log("MOCK 자동 결제 완료");
+      } else {
+        console.log("자동 결제 API 요청...");
+        await api.post(`/payment/auto-checkout`, {
+          cartNumber: parseInt(cartInput, 10),
+          userId: user?.id,
+        });
+      }
+
       stopScan();
       setStoreId(null);
       setCartNumber(null);
       setCartRegistered(false);
-      router.replace("/home");
+      setEntryDetected(false);
+      setIsPaying(false);
+
+      // 결제 완료 후 cart로 이동해 모달 표시
+      router.replace({
+        pathname: "/cart",
+        params: { autoDone: "true" },
+      });
+    } catch (error) {
+      console.error("자동 결제 실패:", error);
+      alert("자동 결제 중 오류가 발생했습니다.");
+      setIsPaying(false);
     }
-  }, [devices, storeId]);
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>매장 입장 준비</Text>
 
-      {/* 카트번호 입력 모달 */}
       <Modal visible={!cartRegistered} transparent animationType="fade">
         <View style={styles.modalBackground}>
           <View style={styles.modalBox}>
@@ -119,7 +135,6 @@ export default function StoreBLE() {
               <Pressable style={styles.modalBtn} onPress={handleCartRegister}>
                 <Text style={{ color: "#fff" }}>등록하기</Text>
               </Pressable>
-
               <Pressable
                 style={[styles.modalBtn, { backgroundColor: "#888" }]}
                 onPress={() => router.replace("/home")}
@@ -130,16 +145,6 @@ export default function StoreBLE() {
           </View>
         </View>
       </Modal>
-
-      {/* 매장 입장 후 상태 표시 */}
-      {storeId && (
-        <View style={styles.infoBox}>
-          <Text style={styles.storeText}>현재 매장: {storeId}</Text>
-          <Text style={styles.userText}>
-            {user ? `${user.nickname} 님` : "방문자 님"} 즐거운 쇼핑 되세요!
-          </Text>
-        </View>
-      )}
     </View>
   );
 }
@@ -176,7 +181,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
   },
-  infoBox: { marginTop: 20, alignItems: "center" },
-  storeText: { fontSize: 18, fontWeight: "600", color: "#22C55E", marginBottom: 8 },
-  userText: { fontSize: 16, color: "#555" },
 });

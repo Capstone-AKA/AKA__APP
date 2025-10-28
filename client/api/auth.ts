@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import api, { BASE_URL } from '../api/api'
+import api from '../api/api'
 
  //로그인 * 성공 시 access/refresh 토큰 저장 + 사용자 정보 반환
 export const login = async ({ email, password }: { email: string; password: string }) => {
@@ -80,7 +80,7 @@ export const logout = async () => {
 export const refreshAccessToken = async () => {
   const refreshToken = await AsyncStorage.getItem('refreshToken');
 
-  const res = await axios.post(`${BASE_URL}/api/auth/refresh-token`, null, {
+  const res = await axios.post(`/api/auth/refresh-token`, null, {
     headers: { 'X-Refresh-Token': refreshToken || '' },
   });
 

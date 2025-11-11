@@ -2,16 +2,16 @@ package com.app.aka.security.oauth2;
 
 import com.app.aka.config.AppProperties;
 import io.jsonwebtoken.*;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+import java.util.Date;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.stereotype.Component;
-
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 @Component
@@ -21,7 +21,6 @@ public class TokenProvider {
     private static final Logger logger = LoggerFactory.getLogger(TokenProvider.class);
     private final AppProperties appProperties;
 
-    // Access Token 생성
     public String createAccessToken(Long userId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + appProperties.getAuth().getTokenExpirationMsec());
@@ -34,7 +33,6 @@ public class TokenProvider {
                 .compact();
     }
 
-    // Refresh Token 생성
     public String createRefreshToken(Long userId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + appProperties.getAuth().getRefreshTokenExpirationMsec());
@@ -46,8 +44,42 @@ public class TokenProvider {
                 .signWith(SignatureAlgorithm.HS512, appProperties.getAuth().getRefreshTokenSecret())
                 .compact();
     }
+    public boolean validateRefreshToken(String refreshToken) {
+        try {
+            Jwts.parser()
+                    .setSigningKey(appProperties.getAuth().getRefreshTokenSecret())
+                    .parseClaimsJws(refreshToken);
+            return true;
+        } catch (JwtException ex) {
+            return false;
+        }
+    }
 
-    // Access Token 유효성 검사
+    public Long getUserIdFromRefreshToken(String refreshToken) {
+        Claims claims = Jwts.parser()
+                .setSigningKey(appProperties.getAuth().getRefreshTokenSecret())
+                .parseClaimsJws(refreshToken)
+                .getBody();
+
+        return Long.parseLong(claims.getSubject());
+    }
+
+    public String getJwtFromRequest(HttpServletRequest request) {
+        String bearer = request.getHeader("Authorization");
+        if (bearer != null && bearer.startsWith("Bearer ")) {
+            return bearer.substring(7); // "Bearer " 제외하고 토큰만 반환
+        }
+        return null;
+    }
+
+    public Long getUserIdFromRequest(HttpServletRequest request) {
+        String token = getJwtFromRequest(request);
+        if (token == null || !validateAccessToken(token)) {
+            throw new IllegalArgumentException("유효하지 않은 또는 누락된 토큰입니다.");
+        }
+        return getUserIdFromAccessToken(token);
+    }
+
     public boolean validateAccessToken(String token) {
         try {
             Jwts.parser()
@@ -55,12 +87,10 @@ public class TokenProvider {
                     .parseClaimsJws(token);
             return true;
         } catch (JwtException ex) {
-            logger.warn("❌ JWT 유효성 검사 실패: {}", ex.getMessage());
             return false;
         }
     }
 
-    // Access Token 에서 userId 추출
     public Long getUserIdFromAccessToken(String token) {
         Claims claims = Jwts.parser()
                 .setSigningKey(appProperties.getAuth().getTokenSecret())
@@ -69,19 +99,19 @@ public class TokenProvider {
         return Long.parseLong(claims.getSubject());
     }
 
-    // Access Token → Authentication 객체 변환
-    public Authentication getAuthentication(String token) {
-        Long userId = getUserIdFromAccessToken(token);
-
-        // WebSocket에서는 role이 크게 중요하지 않으므로 단순 유저 권한 하나 부여
-        List<SimpleGrantedAuthority> authorities =
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
-
-        return new UsernamePasswordAuthenticationToken(userId, token, authorities);
+    public String getRefreshTokenFromRequest(HttpServletRequest request) {
+        return request.getHeader("X-Refresh-Token");
     }
 
-    // Token 유효성 통합 체크 (Interceptor에서 호출)
+    // TokenProvider.java 하단
     public boolean validateToken(String token) {
         return validateAccessToken(token);
+    }
+
+    public Authentication getAuthentication(String token) {
+        Long userId = getUserIdFromAccessToken(token);
+        List<SimpleGrantedAuthority> authorities =
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+        return new UsernamePasswordAuthenticationToken(userId, token, authorities);
     }
 }

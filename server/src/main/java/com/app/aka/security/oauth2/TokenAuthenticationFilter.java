@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -15,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
@@ -29,24 +31,44 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String path = request.getRequestURI();
+        log.info("🧱 [TokenFilter] 요청 URI: {}", path);
+
+        // 인증 불필요 경로
         if (path.startsWith("/api/auth") || path.startsWith("/swagger") || path.startsWith("/v3/api-docs")) {
-            filterChain.doFilter(request, response);  // 인증 필터 건너뜀
+            log.info("➡️ [TokenFilter] 인증 제외 경로 통과: {}", path);
+            filterChain.doFilter(request, response);
             return;
         }
 
+        // 헤더에서 토큰 추출
+        String header = request.getHeader("Authorization");
+        log.info("🔑 [TokenFilter] Authorization 헤더: {}", header);
+
         String token = getJwtFromRequest(request);
+        log.info("🧩 [TokenFilter] 추출된 토큰: {}", token);
 
         if (token != null && tokenProvider.validateAccessToken(token)) {
             Long userId = tokenProvider.getUserIdFromAccessToken(token);
+            log.info("✅ [TokenFilter] 토큰 유효, userId={}", userId);
 
             UserEntity user = userRepository.findById(userId).orElse(null);
             if (user != null) {
-                UserPrincipal userPrincipal = UserPrincipal.create(user);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
-
+                var userPrincipal = UserPrincipal.create(user);
+                var authentication = new UsernamePasswordAuthenticationToken(
+                        userPrincipal, null, userPrincipal.getAuthorities()
+                );
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                log.info("🔒 [TokenFilter] SecurityContext에 인증자 설정 완료: {}", userPrincipal.getId());
+            } else {
+                log.warn("⚠️ [TokenFilter] DB에서 userId={} 사용자 찾을 수 없음", userId);
+            }
+        } else {
+            if (token == null) {
+                log.warn("🚫 [TokenFilter] Authorization 헤더가 비어 있음");
+            } else {
+                log.warn("❌ [TokenFilter] 토큰 유효성 검사 실패");
             }
         }
 
@@ -60,5 +82,4 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         }
         return null;
     }
-
 }

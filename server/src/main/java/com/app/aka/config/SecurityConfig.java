@@ -22,20 +22,19 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors()
-                .and()
+                .cors(cors -> {}) // 기본 CORS 허용
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/**",
+                                "/api/auth/**",          // 로그인, 회원가입 등 인증 불필요
                                 "/swagger-ui/**",
                                 "/swagger-resources/**",
                                 "/v3/api-docs/**",
-                                "/webjars/**",
-                                "/api/auth/**"
+                                "/webjars/**"
                         ).permitAll()
-                        .anyRequest().authenticated()
+                        .anyRequest().authenticated() // ✅ 나머지는 인증 필요
                 )
                 .addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 

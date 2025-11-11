@@ -4,6 +4,8 @@ import com.app.aka.dto.CartAssignRequestDto;
 import com.app.aka.dto.CartEnterRequestDto;
 import com.app.aka.dto.CartExitRequestDto;
 import com.app.aka.service.CartService;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,6 +33,12 @@ public class CartController {
             @RequestBody CartAssignRequestDto request
     ) {
         cartService.assignCartToUser(userId, request.getCartNumber());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "카트 등록 성공");
+        response.put("cartNumber", request.getCartNumber());
+
         return ResponseEntity.ok("카트가 사용자에게 할당되었습니다.");
     }
 

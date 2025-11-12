@@ -31,25 +31,29 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        log.info("🧱 [TokenFilter] 요청 URI: {}", path);
+        log.info("[TokenFilter] 요청 URI: {}", path);
 
         // 인증 불필요 경로
-        if (path.startsWith("/api/auth") || path.startsWith("/swagger") || path.startsWith("/v3/api-docs")) {
-            log.info("➡️ [TokenFilter] 인증 제외 경로 통과: {}", path);
+        if (path.startsWith("/api/auth")
+                || path.startsWith("/swagger")
+                || path.startsWith("/v3/api-docs")
+                || path.startsWith("/api/cart/items/from-device") // Jetson 제외
+        ) {
+            log.info("[TokenFilter] 인증 제외 경로 통과: {}", path);
             filterChain.doFilter(request, response);
             return;
         }
 
         // 헤더에서 토큰 추출
         String header = request.getHeader("Authorization");
-        log.info("🔑 [TokenFilter] Authorization 헤더: {}", header);
+        log.info("[TokenFilter] Authorization 헤더: {}", header);
 
         String token = getJwtFromRequest(request);
-        log.info("🧩 [TokenFilter] 추출된 토큰: {}", token);
+        log.info("[TokenFilter] 추출된 토큰: {}", token);
 
         if (token != null && tokenProvider.validateAccessToken(token)) {
             Long userId = tokenProvider.getUserIdFromAccessToken(token);
-            log.info("✅ [TokenFilter] 토큰 유효, userId={}", userId);
+            log.info("[TokenFilter] 토큰 유효, userId={}", userId);
 
             UserEntity user = userRepository.findById(userId).orElse(null);
             if (user != null) {
@@ -60,15 +64,15 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                log.info("🔒 [TokenFilter] SecurityContext에 인증자 설정 완료: {}", userPrincipal.getId());
+                log.info("[TokenFilter] SecurityContext에 인증자 설정 완료: {}", userPrincipal.getId());
             } else {
-                log.warn("⚠️ [TokenFilter] DB에서 userId={} 사용자 찾을 수 없음", userId);
+                log.warn("[TokenFilter] DB에서 userId={} 사용자 찾을 수 없음", userId);
             }
         } else {
             if (token == null) {
-                log.warn("🚫 [TokenFilter] Authorization 헤더가 비어 있음");
+                log.warn("[TokenFilter] Authorization 헤더가 비어 있음");
             } else {
-                log.warn("❌ [TokenFilter] 토큰 유효성 검사 실패");
+                log.warn("[TokenFilter] 토큰 유효성 검사 실패");
             }
         }
 

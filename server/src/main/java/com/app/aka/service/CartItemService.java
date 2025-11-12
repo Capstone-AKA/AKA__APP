@@ -39,8 +39,9 @@ public class CartItemService {
         List<CartItemResponseDto> addedItems = new ArrayList<>();
 
         for (String productIdentifier : request.getProductList()) {
-            ProductEntity product = productRepository.findByName(productIdentifier)
+            ProductEntity product = productRepository.findByNameContaining(productIdentifier.trim())
                     .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + productIdentifier));
+
 
             Optional<CartItemEntity> existingCartItemOpt = cartItemRepository.findByCartAndProduct(cart, product);
 

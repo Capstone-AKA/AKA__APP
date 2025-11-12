@@ -7,5 +7,5 @@ import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<ProductEntity, Long> {
     // 상품명을 기준으로 조회
-    Optional<ProductEntity> findByName(String name);
+    Optional<ProductEntity> findByNameContaining(String name);
 }

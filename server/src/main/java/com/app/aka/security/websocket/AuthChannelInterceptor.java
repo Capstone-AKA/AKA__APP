@@ -27,10 +27,10 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
                 String token = authHeader.substring(7);
                 if (tokenProvider.validateToken(token)) {
                     Authentication authentication = tokenProvider.getAuthentication(token);
-                    accessor.setUser(authentication); // ✅ WebSocket 세션에 인증 사용자 연결
-                    System.out.println("🔐 WebSocket 인증 완료: userId=" + authentication.getPrincipal());
+                    accessor.setUser(authentication);
+                    System.out.println("WebSocket 인증 완료: userId=" + authentication.getPrincipal());
                 } else {
-                    System.out.println("❌ WebSocket 토큰 검증 실패");
+                    System.out.println("WebSocket 토큰 검증 실패");
                 }
             }
         }

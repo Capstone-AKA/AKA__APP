@@ -16,6 +16,12 @@ api.interceptors.request.use(async (config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+    // 🧩 디버깅용 콘솔 로그
+  console.log("📡 요청 URL:", (config.baseURL ?? "") + (config.url ?? ""));
+  console.log("📦 요청 Body:", config.data);
+  console.log("🧾 요청 Headers:", config.headers);
+
   return config;
 });
 

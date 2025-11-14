@@ -10,82 +10,81 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import BackButton from "../components/BackButton";
 import api from "../api/api";
 
-// 환경 변수 직접 불러오기
-// env만 false해주면됨 아래는 건들필요 ㄴㄴ
 const USE_MOCK_MODE = process.env.EXPO_PUBLIC_USE_MOCK === "true";
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
-
 const { width } = Dimensions.get("window");
 
 export default function ReceiptScreen() {
-  const { payment_id } = useLocalSearchParams<{ payment_id: string }>();
+  const { receipt_id } = useLocalSearchParams<{ receipt_id: string }>();
 
   const [receipt, setReceipt] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // ✅ 백엔드 명세: GET /api/payments/{receiptId}
   useEffect(() => {
     const fetchReceipt = async () => {
       setLoading(true);
       setError("");
       try {
         if (USE_MOCK_MODE) {
-          // [Mock 데이터]
+          // [Mock 데이터] — 개발용
           const mockData = {
-            receipt_id: payment_id ?? 9999,
-            issued_at: new Date().toISOString(),
-            receipt_data: {
-              store: "테스트 마켓 A",
-              payment_method: "신용카드",
-              total_amount: 12900,
-              items: [
-                { name: "사과", quantity: 2, total: 6000 },
-                { name: "배", quantity: 1, total: 4500 },
-                { name: "콜라", quantity: 1, total: 2400 },
-              ],
-            },
+            receiptId: receipt_id ?? 9999,
+            issuedAt: new Date().toISOString(),
+            paymentMethod: "KAKAOPAY",
+            amount: 30000,
+            userId: 5,
+            cartId: 20,
+            items: [
+              { productName: "상품1", quantity: 2, totalPrice: 20000 },
+              { productName: "상품2", quantity: 1, totalPrice: 10000 },
+            ],
           };
           setReceipt(mockData);
         } else {
-          // [백엔드 연동용 코드]
-          const res = await api.get("/receipt", {
-            params: { payment_id },
+          const token = await AsyncStorage.getItem("accessToken");
+          const res = await api.get(`/api/payments/${receipt_id}`, {
+            headers: { Authorization: `Bearer ${token}` },
           });
           setReceipt(res.data);
         }
       } catch (err) {
-        console.error("영수증 조회 실패:", err);
+        console.error("❌ 영수증 조회 실패:", err);
         setError("영수증을 불러올 수 없습니다.");
       } finally {
         setLoading(false);
       }
     };
 
-    if (payment_id) fetchReceipt();
-  }, [payment_id]);
+    if (receipt_id) fetchReceipt();
+  }, [receipt_id]);
 
+  // ✅ 로딩 상태
   if (loading) {
     return (
       <View style={styles.screen}>
-        <ActivityIndicator size="large" color="#2ecc71" style={{ marginTop: 100 }} />
+        <ActivityIndicator size="large" color="#22c55e" style={{ marginTop: 100 }} />
       </View>
     );
   }
 
+  // ✅ 오류 상태
   if (error || !receipt) {
     return (
       <View style={styles.screen}>
         <SafeAreaView>
           <BackButton targetPath="/history" />
         </SafeAreaView>
-        <Text style={styles.loading}>{error || "영수증 데이터가 없습니다."}</Text>
+        <Text style={styles.loading}>{error || "영수증 데이터를 찾을 수 없습니다."}</Text>
       </View>
     );
   }
 
+  // ✅ 본문 렌더링
   return (
     <View style={styles.screen}>
       <SafeAreaView>
@@ -102,26 +101,23 @@ export default function ReceiptScreen() {
             />
           </View>
 
-          <Text style={styles.store}>{receipt.receipt_data.store}</Text>
-          <Text style={styles.meta}>영수증 ID: {receipt.receipt_id}</Text>
+          <Text style={styles.store}>💳 결제수단: {receipt.paymentMethod}</Text>
+          <Text style={styles.meta}>영수증 번호: {receipt.receiptId}</Text>
           <Text style={styles.meta}>
-            발행일시: {new Date(receipt.issued_at).toLocaleString()}
+            결제일시: {new Date(receipt.issuedAt).toLocaleString()}
           </Text>
-          <Text style={styles.meta}>
-            결제수단: {receipt.receipt_data.payment_method}
-          </Text>
+          <Text style={styles.meta}>카트 ID: {receipt.cartId}</Text>
 
           <View style={styles.dividerLine} />
 
-          {receipt.receipt_data.items.map((item: any, index: number) => (
+          {receipt.items.map((item: any, index: number) => (
             <Text key={index} style={styles.itemText}>
-              {item.name} x {item.quantity} = ₩{item.total.toLocaleString()}
+              {item.productName} x {item.quantity} = ₩
+              {item.totalPrice.toLocaleString()}
             </Text>
           ))}
 
-          <Text style={styles.total}>
-            총합: ₩{receipt.receipt_data.total_amount.toLocaleString()}
-          </Text>
+          <Text style={styles.total}>총 결제금액: ₩{receipt.amount.toLocaleString()}</Text>
         </ScrollView>
       </View>
     </View>

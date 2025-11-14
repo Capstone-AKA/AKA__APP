@@ -21,7 +21,7 @@ public class PaymentController {
     private final TokenProvider tokenProvider;
 
     // 결제 실행 → 영수증 반환
-    @PostMapping
+    @PostMapping("/checkout")
     public ResponseEntity<ReceiptResponseDto> pay(
             @RequestBody PaymentRequestDto request,
             HttpServletRequest httpRequest

@@ -1,151 +1,118 @@
-import { useState, useEffect } from "react";
-import { BleManager, Device } from "react-native-ble-plx";
-import { PermissionsAndroid, Platform } from "react-native";
+import { useState, useEffect, useRef } from "react";
+import { Platform, PermissionsAndroid } from "react-native";
 
-const bleManager = new BleManager();
+// ✅ BLE 관련 타입을 위한 선언 (웹 환경에서도 오류 방지)
+type Device = {
+  id: string;
+  name?: string | null;
+  rssi?: number | null;
+};
 
-async function requestPermissions() {
-  if (Platform.OS === "android") {
-    await PermissionsAndroid.requestMultiple([
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-    ]);
-  }
-}
+// ✅ 상수 정의 (입장/퇴장 비콘 이름)
+const ENTRY_DEVICE_NAME = "MART_IN";
+const EXIT_DEVICE_NAME = "MART_OUT";
 
+// ✅ 메인 훅
 export function useBLE() {
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
+  // ✅ 웹에서는 BLE 비활성화
+  if (Platform.OS === "web") {
+    console.warn("⚠️ BLE is not supported on web. Returning dummy hooks.");
+    return {
+      devices: {} as { [key: string]: Device },
+      isScanning: false,
+      startScan: () => console.log("BLE not available on web."),
+      stopScan: () => console.log("BLE not available on web."),
+    };
+  }
+
+  // ✅ 모바일 환경만 BLE 모듈 import
+  const { BleManager } = require("react-native-ble-plx");
+  const bleManager = new BleManager();
+
+  // ✅ 여러 BLE 기기를 이름 기준으로 관리
+  const [devices, setDevices] = useState<{ [key: string]: Device }>({});
   const [isScanning, setIsScanning] = useState(false);
-  const [bleConnected, setBleConnected] = useState(false);
+  const scanRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ✅ 안드로이드 권한 요청
+  async function requestPermissions() {
+    if (Platform.OS === "android") {
+      await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+      ]);
+    }
+  }
 
   useEffect(() => {
     requestPermissions();
+
     return () => {
+      stopScan();
       bleManager.destroy();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // RSSI 임계값 (너무 약한 신호 제외)
-  const RSSI_THRESHOLD = -70;
-
-  // 스캔 시작
+  // ✅ 스캔 시작 (입장/퇴장 비콘 모두 탐색)
   const startScan = () => {
     if (isScanning) return;
-    setDevices([]);
+    console.log("📡 BLE 스캔 시작");
     setIsScanning(true);
 
-    console.log("BLE 스캔 시작");
-
-    bleManager.startDeviceScan(null, null, (error, device) => {
+    bleManager.startDeviceScan(null, null, (error: any, device: Device) => {
       if (error) {
         console.error("BLE Scan error:", error);
         setIsScanning(false);
         return;
       }
 
-      // RSSI 필터링 + 실시간 갱신
-      if (device && device.name && device.rssi !== null && device.rssi > RSSI_THRESHOLD) {
-        setDevices((prev) => {
-          const exists = prev.find((d) => d.id === device.id);
-          if (exists) {
-            return prev.map((d) => (d.id === device.id ? device : d));
-          }
-          return [...prev, device];
-        });
+      if (device && device.name) {
+        const name = device.name.toUpperCase();
+        if (name.includes(ENTRY_DEVICE_NAME) || name.includes(EXIT_DEVICE_NAME)) {
+          setDevices((prev) => ({
+            ...prev,
+            [name]: device,
+          }));
+          console.log(`📍 감지됨: ${name} (RSSI: ${device.rssi})`);
+        }
       }
     });
-  };
 
-  // 스캔 중지
-  const stopScan = () => {
-    if (isScanning) {
+    // ✅ 스캔 주기적으로 재시작 (신호 갱신 유지)
+    scanRef.current = setInterval(() => {
       bleManager.stopDeviceScan();
-      setIsScanning(false);
-      console.log("BLE 스캔 중지");
-    }
-  };
-
-  // 기기 연결
-  const connectToDevice = async (deviceId: string) => {
-    try {
-      const device = await bleManager.connectToDevice(deviceId);
-      await device.discoverAllServicesAndCharacteristics();
-      setConnectedDevice(device);
-      setBleConnected(true);
-      console.log("BLE 연결 성공:", device.name);
-      return device;
-    } catch (e) {
-      console.error("BLE Connection error:", e);
-    }
-  };
-
-  // 연결 해제
-  const disconnectFromDevice = async () => {
-    try {
-      if (connectedDevice) {
-        await bleManager.cancelDeviceConnection(connectedDevice.id);
-        setConnectedDevice(null);
-        setBleConnected(false);
-        console.log("BLE 연결 해제");
-      }
-    } catch (e) {
-      console.error("BLE disconnect error:", e);
-    }
-  };
-
-  // 알림 구독
-  const subscribeToCharacteristic = async (
-    serviceUUID: string,
-    characteristicUUID: string,
-    onUpdate: (value: string | null) => void
-  ) => {
-    if (!connectedDevice) return;
-
-    connectedDevice.monitorCharacteristicForService(
-      serviceUUID,
-      characteristicUUID,
-      (error, characteristic) => {
-        if (error) {
-          console.error("Notification error:", error);
-          return;
+      bleManager.startDeviceScan(null, null, (error: any, device: Device) => {
+        if (error) return;
+        if (device?.name) {
+          const name = device.name.toUpperCase();
+          if (name.includes(ENTRY_DEVICE_NAME) || name.includes(EXIT_DEVICE_NAME)) {
+            setDevices((prev) => ({
+              ...prev,
+              [name]: device,
+            }));
+          }
         }
-        const value = characteristic?.value
-          ? Buffer.from(characteristic.value, "base64").toString("utf-8")
-          : null;
-        onUpdate(value);
-      }
-    );
+      });
+    }, 5000); // 5초마다 재시작
   };
 
-  // 데이터 쓰기
-  const writeToCharacteristic = async (
-    serviceUUID: string,
-    characteristicUUID: string,
-    data: string
-  ) => {
-    if (!connectedDevice) return;
-
-    const base64Data = Buffer.from(data, "utf-8").toString("base64");
-    await connectedDevice.writeCharacteristicWithResponseForService(
-      serviceUUID,
-      characteristicUUID,
-      base64Data
-    );
+  // ✅ 스캔 중지
+  const stopScan = () => {
+    if (scanRef.current) clearInterval(scanRef.current);
+    bleManager.stopDeviceScan();
+    setIsScanning(false);
+    console.log("🛑 BLE 스캔 중지");
   };
 
   return {
     devices,
     isScanning,
-    connectedDevice,
-    bleConnected,
     startScan,
     stopScan,
-    connectToDevice,
-    disconnectFromDevice,
-    subscribeToCharacteristic,
-    writeToCharacteristic,
   };
 }
+
+export default useBLE;

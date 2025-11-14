@@ -41,9 +41,8 @@ public class CartItemController {
     // 수량 증가 (+ 버튼)
     @PatchMapping("/items/{cartItemId}/increase")
     public ResponseEntity<CartItemDeltaListDto> increaseItemQuantity(@PathVariable Long cartItemId) {
+
         CartItemDeltaListDto delta = cartItemService.increaseQuantity(cartItemId);
-        // WebSocket 업데이트 전송
-        messagingTemplate.convertAndSend("/topic/cart/" + delta.getCartNumber(), delta);
         return ResponseEntity.ok(delta);
     }
 
@@ -51,14 +50,12 @@ public class CartItemController {
     @PatchMapping("/items/{cartItemId}/decrease")
     public ResponseEntity<CartItemDeltaListDto> decreaseItemQuantity(@PathVariable Long cartItemId) {
         CartItemDeltaListDto delta = cartItemService.decreaseQuantity(cartItemId);
-        messagingTemplate.convertAndSend("/topic/cart/" + delta.getCartNumber(), delta);
         return ResponseEntity.ok(delta);
     }
 
     // 상품 삭제
     @DeleteMapping("/items/{cartItemId}")
     public ResponseEntity<CartItemDeltaListDto> deleteItem(@PathVariable Long cartItemId) {
-
         CartItemDeltaListDto delta = cartItemService.deleteItem(cartItemId);
         return ResponseEntity.ok(delta);
     }

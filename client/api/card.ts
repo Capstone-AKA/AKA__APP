@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import api, { BASE_URL } from "../api/api"; // api.ts에서 axios 인스턴스와 BASE_URL 불러오기
+import api from "../api/api"; // api.ts에서 axios 인스턴스와 BASE_URL 불러오기
 
 // 카드 타입 정의
 export interface Card {

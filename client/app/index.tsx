@@ -19,14 +19,14 @@ export default function Index() {
       <View style={[styles.filledCircle, styles.filled2]} />
 
       <Text style={styles.title}>
-        AKA에 방문해주셔서{'\n'}감사합니다!
+        ACA에 방문해주셔서{'\n'}감사합니다!
       </Text>
 
       <TouchableOpacity
         style={styles.loginButton}
         onPress={() => router.push('/login')}
       >
-        <Text style={styles.loginButtonText}>AKA로 입장하기</Text>
+        <Text style={styles.loginButtonText}>ACA로 입장하기</Text>
         <Text style={styles.loginSubText}>로그인/회원가입</Text>
       </TouchableOpacity>
     </View>

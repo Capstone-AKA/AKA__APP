@@ -135,7 +135,7 @@ public class CartItemService {
         return delta;
     }
 
-    // 상품 삭제 로직 수정
+    // 상품 삭제
     public CartItemDeltaListDto deleteItem(Long cartItemId) {
         CartItemEntity cartItem = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() -> new RuntimeException("아이템을 찾을 수 없습니다."));
@@ -144,7 +144,7 @@ public class CartItemService {
         cart.setTotalAmount(Math.max(0,
                 Optional.ofNullable(cart.getTotalAmount()).orElse(0) - cartItem.getTotalPrice()));
 
-        // 삭제 전 DTO 변환
+        // 삭제 전 정보
         CartItemResponseDto deletedItemDto = CartItemResponseDto.builder()
                 .cartItemId(cartItem.getId())
                 .productId(cartItem.getProduct().getId())
@@ -158,15 +158,19 @@ public class CartItemService {
         cartItemRepository.delete(cartItem);
         cartRepository.save(cart);
 
-        CartItemDeltaListDto delta = CartItemDeltaListDto.builder()
+        List<CartItemEntity> updatedItems = cartItemRepository.findByCart(cart);
+
+        // 최신 장바구니 DTO로 변환
+        CartDetailResponseDto updatedCart = convertToCartDetailResponseDto(cart, updatedItems);
+
+        // WebSocket 브로드캐스트 (프론트는 항상 전체 리스트 수신)
+        messagingTemplate.convertAndSend("/topic/cart/" + cart.getCartNumber(), updatedCart);
+        // HTTP 응답용 delta (삭제된 항목 정보만)
+        return CartItemDeltaListDto.builder()
                 .cartNumber(cart.getCartNumber())
                 .items(List.of(deletedItemDto))
                 .newTotalAmount(cart.getTotalAmount())
                 .build();
-
-        // 브로드캐스트 추가
-        messagingTemplate.convertAndSend("/topic/cart/" + cart.getCartNumber(), delta);
-        return delta;
     }
 
     // 장바구니 조회 (전체) - 기존 동일

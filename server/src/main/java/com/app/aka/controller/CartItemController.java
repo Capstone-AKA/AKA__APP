@@ -58,8 +58,8 @@ public class CartItemController {
     // 상품 삭제
     @DeleteMapping("/items/{cartItemId}")
     public ResponseEntity<CartItemDeltaListDto> deleteItem(@PathVariable Long cartItemId) {
+
         CartItemDeltaListDto delta = cartItemService.deleteItem(cartItemId);
-        messagingTemplate.convertAndSend("/topic/cart/" + delta.getCartNumber(), delta);
         return ResponseEntity.ok(delta);
     }
 

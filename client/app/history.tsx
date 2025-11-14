@@ -10,16 +10,17 @@ import {
 import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/useAuth";
 import BackButton from "../components/BackButton";
-import api, { BASE_URL } from "../api/api"; // api.ts에서 BASE_URL 불러오기
-import { EXPO_PUBLIC_USE_MOCK } from "@env"; // mock 모드 스위치
+import api from "../api/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { EXPO_PUBLIC_USE_MOCK } from "@env";
 
-// 타입 정의
+// 백엔드 명세 기준 타입 정의
 interface Payment {
-  payment_id: number;
-  total_amount: number;
-  status: string;
-  paid_at: string;
-  store_name?: string;
+  receiptId: number;
+  issuedAt: string;
+  paymentMethod: string;
+  amount: number;
+  cartId: number;
 }
 
 export default function HistoryScreen() {
@@ -33,6 +34,7 @@ export default function HistoryScreen() {
 
   const USE_MOCK_MODE = EXPO_PUBLIC_USE_MOCK === "true";
 
+  // ✅ 결제 내역 불러오기
   useEffect(() => {
     const fetchPayments = async () => {
       setLoading(true);
@@ -42,30 +44,31 @@ export default function HistoryScreen() {
           // [Mock용 더미 데이터]
           const mockPayments: Payment[] = [
             {
-              payment_id: 1001,
-              total_amount: 12000,
-              status: "completed",
-              paid_at: new Date().toISOString(),
-              store_name: "이마트 연산점",
+              receiptId: 1,
+              issuedAt: new Date().toISOString(),
+              paymentMethod: "KAKAOPAY",
+              amount: 12500,
+              cartId: 3,
             },
             {
-              payment_id: 1002,
-              total_amount: 8900,
-              status: "completed",
-              paid_at: new Date().toISOString(),
-              store_name: "이마트 구서점",
+              receiptId: 2,
+              issuedAt: new Date().toISOString(),
+              paymentMethod: "CARD",
+              amount: 8800,
+              cartId: 4,
             },
           ];
           setPayments(mockPayments);
         } else {
-          // [백엔드 연동용 코드]
-          const res = await api.get(`/payment/history`, {
-            params: { user_id: userId },
+          // ✅ [백엔드 연동용 코드]
+          const token = await AsyncStorage.getItem("accessToken");
+          const res = await api.get("/api/payments/history", {
+            headers: { Authorization: `Bearer ${token}` },
           });
           setPayments(res.data);
         }
       } catch (err) {
-        console.error("결제내역 조회 실패:", err);
+        console.error("❌ 결제내역 조회 실패:", err);
         setError("결제 내역을 불러올 수 없습니다.");
       } finally {
         setLoading(false);
@@ -75,32 +78,36 @@ export default function HistoryScreen() {
     if (userId) fetchPayments();
   }, [userId]);
 
+  // ✅ 개별 아이템 렌더링
   const renderItem = ({ item }: { item: Payment }) => {
-    const dateObj = new Date(item.paid_at);
-    const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}(${
-      ["일", "월", "화", "수", "목", "금", "토"][dateObj.getDay()]
-    })`;
+    const dateObj = new Date(item.issuedAt);
+    const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}(${[
+      "일",
+      "월",
+      "화",
+      "수",
+      "목",
+      "금",
+      "토",
+    ][dateObj.getDay()]})`;
 
     return (
       <View
         style={styles.card}
         onTouchEnd={() =>
-          router.push(`/receipt?payment_id=${item.payment_id}`)
+          router.push(`/receipt?receipt_id=${item.receiptId}`)
         }
       >
         <View>
-          <Text style={styles.store}>{item.store_name ?? "매장"}</Text>
-          <Text style={styles.meta}>
-            {dateStr} {item.status === "completed" ? "결제완료" : item.status}
-          </Text>
+          <Text style={styles.store}>결제수단: {item.paymentMethod}</Text>
+          <Text style={styles.meta}>{dateStr} 결제 완료</Text>
         </View>
-        <Text style={styles.amount}>
-          ₩{item.total_amount.toLocaleString()}
-        </Text>
+        <Text style={styles.amount}>₩{item.amount.toLocaleString()}</Text>
       </View>
     );
   };
 
+  // ✅ 로딩 화면
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -109,6 +116,7 @@ export default function HistoryScreen() {
     );
   }
 
+  // ✅ 오류 화면
   if (error) {
     return (
       <View style={styles.loadingContainer}>
@@ -117,19 +125,20 @@ export default function HistoryScreen() {
     );
   }
 
+  // ✅ 본문 렌더링
   return (
     <View style={styles.container}>
       <SafeAreaView>
         <BackButton targetPath="/home" />
       </SafeAreaView>
 
-      <Text style={styles.header}>영수증 히스토리</Text>
+      <Text style={styles.header}>💳 결제 내역</Text>
       <View style={styles.divider} />
 
       <FlatList
         data={payments}
         renderItem={renderItem}
-        keyExtractor={(item) => item.payment_id.toString()}
+        keyExtractor={(item) => item.receiptId.toString()}
         contentContainerStyle={{ paddingBottom: 20 }}
         ListEmptyComponent={
           <Text style={{ textAlign: "center" }}>결제 내역이 없습니다.</Text>
@@ -141,8 +150,18 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", paddingHorizontal: 15 },
-  header: { fontSize: 24, fontWeight: "bold", paddingHorizontal: 20, marginBottom: 30 },
-  divider: { height: 1, backgroundColor: "#ddd", marginHorizontal: 20, marginBottom: 20 },
+  header: {
+    fontSize: 24,
+    fontWeight: "bold",
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#ddd",
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
   card: {
     flexDirection: "row",
     justifyContent: "space-between",

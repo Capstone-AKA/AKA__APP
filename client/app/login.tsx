@@ -9,13 +9,11 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "../contexts/useAuth";
-import api from "../api/api";   
+import { login as apiLogin, signup as apiSignup } from "../api/auth"; // ✅ auth.ts import
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// .env의 설정값 불러오기
 const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === "true";
 
-// 커스텀 체크박스
 function CheckBox({
   value,
   onValueChange,
@@ -45,7 +43,6 @@ function CheckBox({
 export default function AuthScreen() {
   const [tab, setTab] = useState<"login" | "signup">("login");
   const router = useRouter();
-  const { login } = useAuth(); // useAuth의 login(tokens) 사용
 
   // 로그인 상태
   const [loginEmail, setLoginEmail] = useState("");
@@ -61,32 +58,41 @@ export default function AuthScreen() {
   const [userId, setUserId] = useState("");
   const [agree, setAgree] = useState(false);
 
-  // 로그인
+  // ✅ 로그인 처리
   const handleLogin = async () => {
     try {
       if (USE_MOCK) {
-        // mock 로그인
         if (loginEmail === "test@test.com" && loginPassword === "1234") {
-          await login({ accessToken: "mock", refreshToken: "mock" });
+          Alert.alert("로그인 성공 (MOCK)");
           router.replace("/home");
         } else {
           Alert.alert("로그인 실패", "이메일 또는 비밀번호를 확인해주세요.");
         }
       } else {
-        // 실제 서버 로그인
-        const res = await api.post("/api/auth/login", {
+        const userInfo = await apiLogin({
           email: loginEmail,
           password: loginPassword,
         });
-        await login(res.data);
+
+        // ✅ 로그인 후 토큰 확인
+        const token = await AsyncStorage.getItem("accessToken");
+        console.log("✅ AsyncStorage에 저장된 accessToken:", token);
+
+        if (!token) {
+          Alert.alert("오류", "토큰이 저장되지 않았습니다.");
+          return;
+        }
+
+        console.log("✅ 로그인 성공:", userInfo);
         router.replace("/home");
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error("❌ 로그인 실패:", err);
+      Alert.alert("로그인 실패", err.message || "서버 오류가 발생했습니다.");
     }
   };
 
-  // 회원가입
+  // ✅ 회원가입 처리
   const handleSignup = async () => {
     if (signupPassword !== confirmPassword) {
       setError("비밀번호가 일치하지 않습니다.");
@@ -98,30 +104,20 @@ export default function AuthScreen() {
     }
 
     try {
-      // 1. 회원가입 요청
-      await api.post("/api/auth/signup", {
+      const userInfo = await apiSignup({
         email: signupEmail,
         password: signupPassword,
         name,
         userId,
       });
 
-      // 2. 회원가입 성공 → 바로 로그인
-      const res = await api.post("/api/auth/login", {
-        email: signupEmail,
-        password: signupPassword,
-      });
+      const token = await AsyncStorage.getItem("accessToken");
+      console.log("✅ 회원가입 후 저장된 accessToken:", token);
 
-      const tokens = res.data; // { accessToken, refreshToken }
-
-      // 3. 토큰 저장 & 유저 정보 불러오기
-      await login(tokens);
-
-      // 4. 홈 화면으로 이동
       router.replace("/home");
-    } catch (err) {
-      console.error("회원가입 실패 상세:", err);
-      Alert.alert("회원가입 실패", "다시 시도해주세요.");
+    } catch (err: any) {
+      console.error("❌ 회원가입 실패:", err);
+      Alert.alert("회원가입 실패", err.message || "다시 시도해주세요.");
     }
   };
 
@@ -141,9 +137,7 @@ export default function AuthScreen() {
           style={[styles.tab, tab === "signup" && styles.activeTab]}
           onPress={() => setTab("signup")}
         >
-          <Text
-            style={[styles.tabText, tab === "signup" && styles.activeTabText]}
-          >
+          <Text style={[styles.tabText, tab === "signup" && styles.activeTabText]}>
             회원가입
           </Text>
         </TouchableOpacity>
@@ -159,7 +153,7 @@ export default function AuthScreen() {
             value={loginEmail}
             onChangeText={setLoginEmail}
             autoCorrect={false}
-            keyboardType="default"
+            keyboardType="email-address"
           />
           <TextInput
             style={styles.input}
@@ -231,7 +225,6 @@ export default function AuthScreen() {
   );
 }
 
-// 스타일 그대로 유지
 const styles = StyleSheet.create({
   container: {
     padding: 24,

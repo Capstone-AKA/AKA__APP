@@ -28,9 +28,9 @@ public class CartItemController {
         if (request.getCartNumber() != null) {
             String topic = "/topic/cart/" + request.getCartNumber();
             messagingTemplate.convertAndSend(topic, updatedCart);
-            System.out.println("📡 WebSocket 브로드캐스트 완료 → " + topic);
+            System.out.println(" WebSocket 브로드캐스트 완료 → " + topic);
         } else {
-            System.out.println("⚠️ cartNumber가 null이어서 WebSocket 전송 생략됨");
+            System.out.println("cartNumber가 null이어서 WebSocket 전송 생략됨");
         }
 
         // 기존과 동일하게 결과를 HTTP 응답으로 반환
@@ -41,19 +41,26 @@ public class CartItemController {
     // 수량 증가 (+ 버튼)
     @PatchMapping("/items/{cartItemId}/increase")
     public ResponseEntity<CartItemDeltaListDto> increaseItemQuantity(@PathVariable Long cartItemId) {
-        return ResponseEntity.ok(cartItemService.increaseQuantity(cartItemId));
+        CartItemDeltaListDto delta = cartItemService.increaseQuantity(cartItemId);
+        // WebSocket 업데이트 전송
+        messagingTemplate.convertAndSend("/topic/cart/" + delta.getCartNumber(), delta);
+        return ResponseEntity.ok(delta);
     }
 
     // 수량 감소 (- 버튼)
     @PatchMapping("/items/{cartItemId}/decrease")
     public ResponseEntity<CartItemDeltaListDto> decreaseItemQuantity(@PathVariable Long cartItemId) {
-        return ResponseEntity.ok(cartItemService.decreaseQuantity(cartItemId));
+        CartItemDeltaListDto delta = cartItemService.decreaseQuantity(cartItemId);
+        messagingTemplate.convertAndSend("/topic/cart/" + delta.getCartNumber(), delta);
+        return ResponseEntity.ok(delta);
     }
 
     // 상품 삭제
     @DeleteMapping("/items/{cartItemId}")
     public ResponseEntity<CartItemDeltaListDto> deleteItem(@PathVariable Long cartItemId) {
-        return ResponseEntity.ok(cartItemService.deleteItem(cartItemId));
+        CartItemDeltaListDto delta = cartItemService.deleteItem(cartItemId);
+        messagingTemplate.convertAndSend("/topic/cart/" + delta.getCartNumber(), delta);
+        return ResponseEntity.ok(delta);
     }
 
     // 장바구니 전체 조회

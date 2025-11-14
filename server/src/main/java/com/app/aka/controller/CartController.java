@@ -27,18 +27,21 @@ public class CartController {
         return ResponseEntity.ok("BLE 입장이 완료되었습니다.");
     }
 
-    // 카트 할당
+    // 카트 할당 + 자동 입장(storeId=1)
     @PostMapping("/assign")
     public ResponseEntity<Map<String, Object>> assignCartToUser(
             @AuthenticationPrincipal(expression = "id") Long userId,
             @RequestBody CartAssignRequestDto request
     ) {
         Map<String, Object> response = new HashMap<>();
-
         try {
             cartService.assignCartToUser(userId, request.getCartNumber());
+
+            // 🟢 assign과 동시에 storeId=1 입장 처리
+            cartService.cartEnterByBle(userId, 1L);
+
             response.put("success", true);
-            response.put("message", "카트가 사용자에게 할당되었습니다.");
+            response.put("message", "카트가 사용자에게 할당되고 입장이 완료되었습니다.");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("success", false);
@@ -46,6 +49,7 @@ public class CartController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
     }
+
 
 
     //퇴장

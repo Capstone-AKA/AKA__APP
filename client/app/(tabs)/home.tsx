@@ -11,7 +11,7 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>AKA</Text>
+      <Text style={styles.logo}>ACA</Text>
 
       <View style={styles.welcomeBox}>
         <Text style={styles.welcomeText}>

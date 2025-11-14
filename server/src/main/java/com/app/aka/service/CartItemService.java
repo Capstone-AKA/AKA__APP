@@ -90,12 +90,10 @@ public class CartItemService {
         return delta;
     }
 
-    // (+) 수량 증가 로직 보강
+    // (+) 수량 증가
     public CartItemDeltaListDto increaseQuantity(Long cartItemId) {
         CartItemEntity cartItem = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() -> new RuntimeException("아이템을 찾을 수 없습니다."));
-
-        // 수량 +1 후 totalPrice 자동 반영
         cartItem.updateQuantity(cartItem.getQuantity() + 1, cartItem.getUnitPrice());
         cartItemRepository.save(cartItem);
 
@@ -103,37 +101,44 @@ public class CartItemService {
         cart.setTotalAmount(Optional.ofNullable(cart.getTotalAmount()).orElse(0) + cartItem.getUnitPrice());
         cartRepository.save(cart);
 
-        // WebSocket 브로드캐스트 추가
-        CartItemDeltaListDto delta = buildDeltaList(cart, List.of(cartItem));
-        messagingTemplate.convertAndSend("/topic/cart/" + cart.getCartNumber(), delta);
-        return delta;
+        // 전체 장바구니 다시 로드
+        List<CartItemEntity> updatedItems = cartItemRepository.findByCart(cart);
+        CartDetailResponseDto updatedCart = convertToCartDetailResponseDto(cart, updatedItems);
+
+        // 전체 브로드캐스트
+        messagingTemplate.convertAndSend("/topic/cart/" + cart.getCartNumber(), updatedCart);
+
+        // HTTP 응답은 그대로 delta
+        return buildDeltaList(cart, List.of(cartItem));
     }
 
-    // (-) 수량 감소 로직 개선
+    // (-) 수량 감소
     public CartItemDeltaListDto decreaseQuantity(Long cartItemId) {
         CartItemEntity cartItem = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() -> new RuntimeException("아이템을 찾을 수 없습니다."));
-
         CartEntity cart = cartItem.getCart();
 
         if (cartItem.getQuantity() <= 1) {
-            // 수량이 1 이하일 때 자동 삭제
             cartItemRepository.delete(cartItem);
         } else {
             cartItem.updateQuantity(cartItem.getQuantity() - 1, cartItem.getUnitPrice());
             cartItemRepository.save(cartItem);
         }
 
-        // 총 금액 재계산 (음수 방지)
         cart.setTotalAmount(Math.max(0,
                 Optional.ofNullable(cart.getTotalAmount()).orElse(0) - cartItem.getUnitPrice()));
         cartRepository.save(cart);
 
-        // 브로드캐스트 추가
-        CartItemDeltaListDto delta = buildDeltaList(cart, List.of(cartItem));
-        messagingTemplate.convertAndSend("/topic/cart/" + cart.getCartNumber(), delta);
-        return delta;
+        // 전체 장바구니 다시 로드
+        List<CartItemEntity> updatedItems = cartItemRepository.findByCart(cart);
+        CartDetailResponseDto updatedCart = convertToCartDetailResponseDto(cart, updatedItems);
+
+        // 전체 브로드캐스트
+        messagingTemplate.convertAndSend("/topic/cart/" + cart.getCartNumber(), updatedCart);
+
+        return buildDeltaList(cart, List.of(cartItem));
     }
+
 
     // 상품 삭제
     public CartItemDeltaListDto deleteItem(Long cartItemId) {

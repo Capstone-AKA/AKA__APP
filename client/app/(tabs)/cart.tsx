@@ -30,6 +30,39 @@ interface CartItem {
   image?: string;
 }
 
+const USE_MOCK_CART = true;
+
+const MOCK_CART_ITEMS: CartItem[] = [
+  {
+    cartItemId: 1,
+    product_id: 101,
+    product_name: "신라면",
+    price: 950,
+    quantity: 2,
+    total_price: 1900,
+    image: "https://i.ibb.co/vQcR2WC/shinramen.png"
+  },
+  {
+    cartItemId: 2,
+    product_id: 102,
+    product_name: "코카콜라 500ml",
+    price: 1800,
+    quantity: 1,
+    total_price: 1800,
+    image: "https://i.ibb.co/1TK4ZfS/cocacola.png"
+  },
+  {
+    cartItemId: 3,
+    product_id: 103,
+    product_name: "바나나우유",
+    price: 1300,
+    quantity: 3,
+    total_price: 3900,
+    image: "https://i.ibb.co/HdQhPzB/banana.png"
+  },
+];
+
+
 const EXIT_DEVICE_NAME = "MART_OUT";
 const EXIT_RSSI_THRESHOLD = -90;
 const EXIT_DETECTION_WINDOW = 3000;
@@ -157,6 +190,15 @@ export default function CartScreen() {
     };
   }, [cartNumber, user?.id]);
 
+  // ⭐ MOCK 모드일 때 장바구니 초기 데이터 설정
+  useEffect(() => {
+    if (USE_MOCK_CART) {
+      console.log("🧪 MOCK 장바구니 데이터 로드");
+      setCartItems(MOCK_CART_ITEMS);
+      recalculateTotal(MOCK_CART_ITEMS);
+    }
+  }, []);
+
   // ✅ 3️⃣ 총액 계산
   const recalculateTotal = (items: CartItem[]) => {
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -216,7 +258,8 @@ const handleDelete = async (cartItemId: number) => {
   useEffect(() => {
     if (!cartNumber || isPaying || exitDetected) return;
 
-    const exit = devices[EXIT_DEVICE_NAME];
+    // const exit = devices[EXIT_DEVICE_NAME];
+    const exit = devices.EXIT;
     if (exit && typeof exit.rssi === "number" && exit.rssi > EXIT_RSSI_THRESHOLD) {
       console.log(`🚪 퇴장 비콘 감지됨: ${exit.name} (RSSI: ${exit.rssi})`);
       setExitDetected(true);

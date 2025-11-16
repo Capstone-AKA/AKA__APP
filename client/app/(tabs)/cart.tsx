@@ -88,9 +88,13 @@ export default function CartScreen() {
 
   // ✅ 1️⃣ BLE 스캔 시작
   useEffect(() => {
-    startScan();
     console.log("📡 CART 페이지 BLE 스캔 시작");
-    return () => stopScan();
+    startScan();
+
+    return () => {
+      console.log("🛑 CART 화면 종료 → BLE 스캔 중지");
+      stopScan();
+    };
   }, []);
 
   // ✅ 2️⃣ WebSocket + JWT 연결
@@ -256,21 +260,19 @@ const handleDelete = async (cartItemId: number) => {
 
   // ✅ 5️⃣ BLE 퇴장 감지 → 결제 처리
   useEffect(() => {
-    if (!cartNumber || isPaying || exitDetected) return;
+    if (isPaying || exitDetected) return;
 
     // const exit = devices[EXIT_DEVICE_NAME];
     const exit = devices.EXIT;
     if (exit && typeof exit.rssi === "number" && exit.rssi > EXIT_RSSI_THRESHOLD) {
       console.log(`🚪 퇴장 비콘 감지됨: ${exit.name} (RSSI: ${exit.rssi})`);
       setExitDetected(true);
-      stopScan();
       handleAutoPayment();
 
       setTimeout(() => {
         console.log("🔄 퇴장 감지 초기화 및 재시작");
         setExitDetected(false);
         setIsPaying(false);
-        startScan();
       }, EXIT_DETECTION_WINDOW);
     }
   }, [devices]);
@@ -281,7 +283,6 @@ const handleDelete = async (cartItemId: number) => {
     setIsPaying(true);
 
     try {
-      stopScan();
       console.log("💳 자동 결제 중...");
 
       if (USE_MOCK_PAYMENT) {
@@ -298,20 +299,19 @@ const handleDelete = async (cartItemId: number) => {
         setLastPaymentId(response.data.receiptId); 
       }
 
-      setCartItems([]);
-      setTotalAmount(0);
-      setStoreId(null);
-      setCartNumber(null);
+    setCartItems([]);
+    setTotalAmount(0);
+    setStoreId(null);
+    setCartNumber(null);
 
-      setModalMode("complete");
-      setModalVisible(true);
-      setIsPaying(false);
+    setModalMode("complete");
+    setModalVisible(true);
+    setIsPaying(false);
     } catch (error) {
       console.error("❌ 자동 결제 실패:", error);
       setIsPaying(false);
-      startScan();
     }
-  };
+    };
 
   // ✅ 7️⃣ 수동 결제
   const handlePayment = async () => {

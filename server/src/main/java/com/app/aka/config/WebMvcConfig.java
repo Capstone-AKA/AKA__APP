@@ -32,7 +32,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
             @Override
             public void addResourceHandlers(ResourceHandlerRegistry registry) {
-                registry.addResourceHandler("/products/**")
+                registry.addResourceHandler("/static/products/**")
                         .addResourceLocations("classpath:/static/products/");
             }
         };

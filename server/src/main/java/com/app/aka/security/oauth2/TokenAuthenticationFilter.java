@@ -38,6 +38,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                 || path.startsWith("/swagger")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/api/cart/items/from-device") // Jetson 제외
+                || path.startsWith("/products/")
         ) {
             log.info("[TokenFilter] 인증 제외 경로 통과: {}", path);
             filterChain.doFilter(request, response);

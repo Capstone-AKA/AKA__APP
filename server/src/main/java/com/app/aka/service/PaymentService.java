@@ -21,6 +21,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final CartRepository cartRepository;
+    private final CartService cartService;
 
     public ReceiptResponseDto processPayment(PaymentRequestDto request, Long userId) {
         // cartNumber로 카트 조회
@@ -42,6 +43,8 @@ public class PaymentService {
                 .build();
 
         paymentRepository.save(payment);
+
+        cartService.exitCart(userId, cart.getStoreId(), cart.getCartNumber());
 
         return buildReceiptResponse(payment, cart);
     }

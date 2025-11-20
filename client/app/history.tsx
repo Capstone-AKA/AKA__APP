@@ -8,13 +8,11 @@ import {
   SafeAreaView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "../contexts/useAuth";
 import BackButton from "../components/BackButton";
 import api from "../api/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { EXPO_PUBLIC_USE_MOCK } from "@env";
 
-// 백엔드 명세 기준 타입 정의
 interface Payment {
   receiptId: number;
   issuedAt: string;
@@ -25,8 +23,6 @@ interface Payment {
 
 export default function HistoryScreen() {
   const router = useRouter();
-  const { user } = useAuth();
-  const userId = user?.id;
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,14 +30,16 @@ export default function HistoryScreen() {
 
   const USE_MOCK_MODE = EXPO_PUBLIC_USE_MOCK === "true";
 
-  // ✅ 결제 내역 불러오기
   useEffect(() => {
     const fetchPayments = async () => {
       setLoading(true);
       setError("");
+
       try {
+        // ⭐ MOCK 모드 실행
         if (USE_MOCK_MODE) {
-          // [Mock용 더미 데이터]
+          console.log("📌 MOCK MODE ON — 결제 내역 Mock 데이터로 표시");
+
           const mockPayments: Payment[] = [
             {
               receiptId: 1,
@@ -58,15 +56,28 @@ export default function HistoryScreen() {
               cartId: 4,
             },
           ];
+
           setPayments(mockPayments);
-        } else {
-          // ✅ [백엔드 연동용 코드]
-          const token = await AsyncStorage.getItem("accessToken");
-          const res = await api.get("/api/payments/history", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setPayments(res.data);
+          return; // 🔥 백엔드 호출 차단
         }
+
+        // ⭐ 백엔드 모드 실행
+        const token = await AsyncStorage.getItem("accessToken");
+
+        if (!token) {
+          setError("JWT 토큰이 없습니다. 다시 로그인해주세요.");
+          return;
+        }
+
+        console.log("📌 BACKEND MODE — JWT 기반 결제내역 조회");
+
+        // 🚨 userId 전달 ❌ → JWT로 백엔드가 알아서 처리함
+        const res = await api.get(`/api/payments/history`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        console.log("📌 서버 응답:", res.data);
+        setPayments(res.data);
       } catch (err) {
         console.error("❌ 결제내역 조회 실패:", err);
         setError("결제 내역을 불러올 수 없습니다.");
@@ -75,10 +86,9 @@ export default function HistoryScreen() {
       }
     };
 
-    if (userId) fetchPayments();
-  }, [userId]);
+    fetchPayments();
+  }, []);
 
-  // ✅ 개별 아이템 렌더링
   const renderItem = ({ item }: { item: Payment }) => {
     const dateObj = new Date(item.issuedAt);
     const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}(${[
@@ -107,7 +117,6 @@ export default function HistoryScreen() {
     );
   };
 
-  // ✅ 로딩 화면
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -116,7 +125,6 @@ export default function HistoryScreen() {
     );
   }
 
-  // ✅ 오류 화면
   if (error) {
     return (
       <View style={styles.loadingContainer}>
@@ -125,7 +133,6 @@ export default function HistoryScreen() {
     );
   }
 
-  // ✅ 본문 렌더링
   return (
     <View style={styles.container}>
       <SafeAreaView>

@@ -40,7 +40,7 @@ export default function ReceiptScreen() {
             userId: 5,
             cartId: 20,
             items: [
-              { productName: "상품1", quantity: 2, totalPrice: 20000 },
+              { productName: "상품1상품1상품1상품1상품1상품1상품1상품1상품1", quantity: 2, totalPrice: 20000 },
               { productName: "상품2", quantity: 1, totalPrice: 10000 },
             ],
           };
@@ -101,23 +101,72 @@ export default function ReceiptScreen() {
             />
           </View>
 
-          <Text style={styles.store}>💳 결제수단: {receipt.paymentMethod}</Text>
-          <Text style={styles.meta}>영수증 번호: {receipt.receiptId}</Text>
-          <Text style={styles.meta}>
-            결제일시: {new Date(receipt.issuedAt).toLocaleString()}
+      <View style={styles.infoBox}>
+        <View style={styles.row}>
+          <Text style={styles.label}>💳 결제수단</Text>
+          <Text style={styles.value}>{receipt.paymentMethod}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>🧾 영수증 번호</Text>
+          <Text style={styles.value}>{receipt.receiptId}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>📅 결제일시</Text>
+          <Text style={styles.value}>
+            {new Date(receipt.issuedAt).toLocaleString()}
           </Text>
-          <Text style={styles.meta}>카트 ID: {receipt.cartId}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>🛒 카트 ID</Text>
+          <Text style={styles.value}>{receipt.cartId}</Text>
+        </View>
+      </View>
 
           <View style={styles.dividerLine} />
 
-          {receipt.items.map((item: any, index: number) => (
-            <Text key={index} style={styles.itemText}>
-              {item.productName} x {item.quantity} = ₩
-              {item.totalPrice.toLocaleString()}
-            </Text>
-          ))}
+          {receipt.items.map((item: any, index: number) => {
+            const unitPrice = item.totalPrice / item.quantity;
 
-          <Text style={styles.total}>총 결제금액: ₩{receipt.amount.toLocaleString()}</Text>
+            return (
+              <View key={index} style={styles.itemRow}>
+                <Text style={[styles.itemCol, { flex: 2 }]}>
+                  {item.productName}
+                </Text>
+
+                <Text style={[styles.itemCol, { flex: 1, textAlign: "right" }]}>
+                  {unitPrice.toLocaleString()}
+                </Text>
+
+                <Text style={[styles.itemCol, { flex: 0.5, textAlign: "center" }]}>
+                  {item.quantity}
+                </Text>
+
+                <Text style={[styles.itemCol, { flex: 1, textAlign: "right" }]}>
+                  ₩{item.totalPrice.toLocaleString()}
+                </Text>
+              </View>
+            );
+          })}
+
+
+        {/* 구분선 */}
+        <View style={styles.dividerLine} />
+
+        {/* 판매 합계 행 */}
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>판매 합계</Text>
+
+          <Text style={styles.totalAmount}>
+            ₩{receipt.amount.toLocaleString()}
+          </Text>
+        </View>
+
+        {/* 구분선 */}
+        <View style={styles.dividerLine} />
+
         </ScrollView>
       </View>
     </View>
@@ -125,15 +174,56 @@ export default function ReceiptScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#fff", paddingHorizontal: 18 },
+  screen: { flex: 1, backgroundColor: "#fff", paddingHorizontal: 1},
   loading: { textAlign: "center", marginTop: 100, fontSize: 16, color: "#333" },
   dividerLine: { height: 1, backgroundColor: "#ccc", marginVertical: 16 },
-  body: { flex: 1, paddingHorizontal: 20, paddingTop: 16, backgroundColor: "#fff" },
+  body: { flex: 1, paddingHorizontal: 20, paddingTop: 0, backgroundColor: "#fff" },
   scrollContent: { paddingBottom: 80, paddingHorizontal: 30 },
   store: { fontSize: 18, fontWeight: "bold", marginBottom: 12, color: "#222" },
   meta: { fontSize: 14, color: "#444", marginBottom: 4 },
-  itemText: { fontSize: 16, marginBottom: 8, color: "#222" },
+  itemText: { fontSize: 13, marginBottom: 8, color: "#222" },
   total: { fontSize: 18, fontWeight: "bold", marginTop: 16, marginBottom: 12 },
   imageContainer: { width: "100%", alignItems: "center", marginTop: 10 },
-  cardImage: { width: width - 60, height: 180 },
+  cardImage: { width: width - 60, height: 170 },
+  infoBox: {
+    marginTop: 0,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  label: {
+    width: 140,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  value: {
+    fontSize: 14,
+  }, 
+  itemRow: {
+    flexDirection: "row",
+    marginBottom: 10,
+    alignItems: "center",
+  },
+  itemCol: {
+      fontSize: 15,
+      color: "#222",
+    },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#222",
+  },
+  totalAmount: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#000",
+  },
 });

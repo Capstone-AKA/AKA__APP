@@ -30,7 +30,7 @@ interface CartItem {
   image?: string;
 }
 
-const USE_MOCK_CART = true;
+const USE_MOCK_CART = EXPO_PUBLIC_USE_MOCK === "true";
 
 const MOCK_CART_ITEMS: CartItem[] = [
   {
@@ -62,7 +62,6 @@ const MOCK_CART_ITEMS: CartItem[] = [
   },
 ];
 
-
 const EXIT_DEVICE_NAME = "MART_OUT";
 const EXIT_RSSI_THRESHOLD = -90;
 const EXIT_DETECTION_WINDOW = 3000;
@@ -72,7 +71,10 @@ export default function CartScreen() {
   const { cartNumber, setStoreId, setCartNumber } = useStore();
   const { user } = useAuth();
   const { startScan, stopScan, devices } = useBLE();
+  
   const lastUpdateRef = useRef(0); // WS 업데이트 Race Condition 방지용
+  const exitRef = useRef<any>(null); // 🔥 EXIT 비콘 보관용 ref
+  
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
@@ -102,10 +104,10 @@ export default function CartScreen() {
     if (!cartNumber) return;
 
     let isActive = true;
+    
     const connectWebSocket = async () => {
       try {
         const token = await AsyncStorage.getItem("accessToken");
-
         if (!token) {
           console.warn("⚠️ JWT 없음: AsyncStorage에서 토큰을 찾지 못했습니다");
           return;
@@ -136,7 +138,6 @@ export default function CartScreen() {
           client.subscribe(`/topic/cart/${cartNumber}`, (message) => {
             const now = Date.now();
 
-            // 🔥 100ms 이내에 들어오는 오래된 메시지 무시
             if (now - lastUpdateRef.current < 100) {
               console.log("⛔ 오래된 WS 메시지 무시");
               return;
@@ -160,8 +161,29 @@ export default function CartScreen() {
               image: item.productImageUrl,
             }));
 
-            setCartItems(mappedItems);
-            recalculateTotal(mappedItems);
+            // merge
+            setCartItems(prevItems => {
+              const updated = [...prevItems];
+
+              mappedItems.forEach((newItem: CartItem) => {
+                const idx = updated.findIndex(i => i.cartItemId === newItem.cartItemId);
+
+                if (idx !== -1) {
+                  updated[idx] = newItem;
+                } else {
+                  updated.push(newItem);
+                }
+              });
+
+              // 🔥 백엔드 totalAmount 있을 경우 그대로 사용
+              if (data.newTotalAmount !== undefined) {
+                setTotalAmount(data.newTotalAmount);
+              } else {
+                recalculateTotal(updated); // fallback
+              }
+
+              return updated;
+            });
           });
 
           client.publish({
@@ -201,7 +223,7 @@ export default function CartScreen() {
       setCartItems(MOCK_CART_ITEMS);
       recalculateTotal(MOCK_CART_ITEMS);
     }
-  }, []);
+  }, [USE_MOCK_CART]);
 
   // ✅ 3️⃣ 총액 계산
   const recalculateTotal = (items: CartItem[]) => {
@@ -469,7 +491,7 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   productImage: { width: 80, height: 80, marginRight: 15 },
   infoSection: { flex: 1, justifyContent: "center" },
-  productName: { fontSize: 18, fontWeight: "600", marginBottom: 8 },
+  productName: { fontSize: 15, fontWeight: "600", marginBottom: 8 },
   quantity: { fontSize: 16, fontWeight: "600", color: "#22C55E" },
   rightSection: { alignItems: "flex-end", justifyContent: "center" },
   price: { fontSize: 16, fontWeight: "600", color: "#111" },

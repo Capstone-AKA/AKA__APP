@@ -11,6 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { login as apiLogin, signup as apiSignup } from "../api/auth"; // ✅ auth.ts import
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../contexts/useAuth";
 
 const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === "true";
 
@@ -44,6 +45,8 @@ export default function AuthScreen() {
   const [tab, setTab] = useState<"login" | "signup">("login");
   const router = useRouter();
 
+  const { login: saveTokensToAuthContext } = useAuth();
+
   // 로그인 상태
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -69,10 +72,12 @@ export default function AuthScreen() {
           Alert.alert("로그인 실패", "이메일 또는 비밀번호를 확인해주세요.");
         }
       } else {
-        const userInfo = await apiLogin({
+        const tokens = await apiLogin({
           email: loginEmail,
           password: loginPassword,
         });
+
+        await saveTokensToAuthContext(tokens);
 
         // ✅ 로그인 후 토큰 확인
         const token = await AsyncStorage.getItem("accessToken");
@@ -83,7 +88,7 @@ export default function AuthScreen() {
           return;
         }
 
-        console.log("✅ 로그인 성공:", userInfo);
+        console.log("✅ 로그인 성공:", tokens);
         router.replace("/home");
       }
     } catch (err: any) {
@@ -104,12 +109,14 @@ export default function AuthScreen() {
     }
 
     try {
-      const userInfo = await apiSignup({
+      const tokens = await apiSignup({
         email: signupEmail,
         password: signupPassword,
         name,
         userId,
       });
+
+      await saveTokensToAuthContext(tokens);
 
       const token = await AsyncStorage.getItem("accessToken");
       console.log("✅ 회원가입 후 저장된 accessToken:", token);

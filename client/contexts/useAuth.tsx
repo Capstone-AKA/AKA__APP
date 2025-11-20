@@ -33,10 +33,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // 앱 시작 시 자동 로그인
   useEffect(() => {
     const loadUser = async () => {
-      const savedTokens = await AsyncStorage.getItem("tokens");
-      if (!savedTokens) return;
 
-      const { accessToken, refreshToken } = JSON.parse(savedTokens);
+      const rawTokens = await AsyncStorage.getItem("tokens");
+      const access = await AsyncStorage.getItem("accessToken");
+      const refresh = await AsyncStorage.getItem("refreshToken");
+
+      let accessToken: string | null = null;
+      let refreshToken: string | null = null;
+
+      if (rawTokens) {
+        const parsed = JSON.parse(rawTokens);
+        accessToken = parsed.accessToken;
+        refreshToken = parsed.refreshToken;
+      } else if (access && refresh) {
+        accessToken = access;
+        refreshToken = refresh;
+
+        // tokens JSON 자동 생성 (자동로그인 안정성 UP)
+        await AsyncStorage.setItem(
+          "tokens",
+          JSON.stringify({ accessToken: access, refreshToken: refresh })
+        );
+      }
+
+      if (!accessToken) return;
 
       if (USE_MOCK) {
         console.log("MOCK: 자동 로그인 성공");

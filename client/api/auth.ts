@@ -1,17 +1,26 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import api from '../api/api'
+import api from '../api/api';
 
- //로그인 * 성공 시 access/refresh 토큰 저장 + 사용자 정보 반환
+// ✅ 로그인 (access/refresh 토큰 저장 + 사용자 정보 반환)
 export const login = async ({ email, password }: { email: string; password: string }) => {
   try {
     const res = await api.post('/api/auth/login', { email, password });
     const data = res.data;
 
+    // ✅ AsyncStorage 사용
     await AsyncStorage.setItem('accessToken', data.accessToken);
     await AsyncStorage.setItem('refreshToken', data.refreshToken);
 
-    const userInfo = await getMyInfo(); // 닉네임 포함된 유저 정보
+    await AsyncStorage.setItem(
+      "tokens",
+      JSON.stringify({
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+      })
+    );
+
+    const userInfo = await getMyInfo();
     return userInfo;
   } catch (error: any) {
     const message = error?.response?.data?.message || '로그인 실패';
@@ -19,7 +28,7 @@ export const login = async ({ email, password }: { email: string; password: stri
   }
 };
 
-//회원가입
+// ✅ 회원가입
 export const signup = async ({
   email,
   password,
@@ -41,30 +50,37 @@ export const signup = async ({
 
     const data = res.data;
 
-    // 백엔드 응답에 토큰이 없을 경우 오류 처리
     if (!data?.accessToken || !data?.refreshToken) {
-      console.warn('백엔드 응답에 토큰이 없습니다:', data);
       throw new Error('회원가입 후 로그인 정보를 받지 못했습니다.');
     }
 
-    // 토큰 저장
+    console.log("🧾 회원가입 응답:", data);
+
     await AsyncStorage.setItem('accessToken', data.accessToken);
     await AsyncStorage.setItem('refreshToken', data.refreshToken);
 
-    await new Promise((resolve) => setTimeout(resolve, 50)); // 또는 await Promise.resolve();
+    // 자동로그인 tokens 저장도 같이 추가
+    await AsyncStorage.setItem(
+      "tokens",
+      JSON.stringify({
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+      })
+    );
 
-    // 사용자 정보 가d져오기
+    // 약간의 딜레이 (비동기 안정화)
+    await new Promise((res) => setTimeout(res, 50));
+
     const userInfo = await getMyInfo();
     return userInfo;
   } catch (error: any) {
-    console.error('회원가입 중 오류 발생:', error);
+    console.error('회원가입 중 오류:', error);
     const message = error?.response?.data?.message || error.message || '회원가입 실패';
     throw new Error(message);
   }
 };
 
-
-// 로그아웃
+// ✅ 로그아웃
 export const logout = async () => {
   try {
     await api.post('/api/auth/logout');
@@ -73,10 +89,11 @@ export const logout = async () => {
   } finally {
     await AsyncStorage.removeItem('accessToken');
     await AsyncStorage.removeItem('refreshToken');
+    await AsyncStorage.removeItem('tokens'); 
   }
 };
 
-// access token 재발급
+// ✅ access token 재발급
 export const refreshAccessToken = async () => {
   const refreshToken = await AsyncStorage.getItem('refreshToken');
 
@@ -86,29 +103,34 @@ export const refreshAccessToken = async () => {
 
   const data = res.data;
   await AsyncStorage.setItem('accessToken', data.accessToken);
+  const current = JSON.parse(await AsyncStorage.getItem("tokens") || "{}");
+  await AsyncStorage.setItem(
+    "tokens",
+    JSON.stringify({
+      accessToken: data.accessToken,
+      refreshToken: current.refreshToken,
+    })
+  );
+
   return data;
 };
 
-
-// 내 정보 조회 (닉네임 등 포함)
+// ✅ 내 정보 조회
 export const getMyInfo = async () => {
   const token = await AsyncStorage.getItem('accessToken');
   const res = await api.get('/api/user/me', {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { Authorization: `Bearer ${token}` },
   });
   return res.data;
 };
 
-// 닉네임 변경
+// ✅ 닉네임 변경
 export const updateNickname = async (newNickname: string) => {
   const res = await api.patch('/api/user/nickname', { newNickname });
   return res.data;
 };
 
-
-// 비밀번호 변경
+// ✅ 비밀번호 변경
 export const updatePassword = async (newPassword: string) => {
   const res = await api.patch('/api/user/password', { newPassword });
   return res.data;

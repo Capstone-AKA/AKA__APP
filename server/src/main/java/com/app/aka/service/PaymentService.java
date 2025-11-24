@@ -24,7 +24,6 @@ public class PaymentService {
     private final CartService cartService;
 
     public ReceiptResponseDto processPayment(PaymentRequestDto request, Long userId) {
-        // cartNumber로 카트 조회
         CartEntity cart = cartRepository.findByCartNumber(request.getCartNumber())
                 .orElseThrow(() -> new RuntimeException("해당 카트를 찾을 수 없습니다."));
 
@@ -32,7 +31,6 @@ public class PaymentService {
             throw new IllegalStateException("해당 카트는 사용자에게 할당되어 있지 않습니다.");
         }
 
-        // 결제 처리 (카카오페이 고정)
         PaymentEntity payment = PaymentEntity.builder()
                 .userId(userId)
                 .cartId(cart.getId())
@@ -41,12 +39,15 @@ public class PaymentService {
                 .status("SUCCESS")
                 .issuedAt(LocalDateTime.now())
                 .build();
-
         paymentRepository.save(payment);
 
+        // 🔥 영수증 먼저 생성 (카트비우기 전에!)
+        ReceiptResponseDto receipt = buildReceiptResponse(payment, cart);
+
+        // 🔥 그 다음 카트 비우기
         cartService.exitCart(userId, cart.getStoreId(), cart.getCartNumber());
 
-        return buildReceiptResponse(payment, cart);
+        return receipt;
     }
 
     public ReceiptResponseDto getReceipt(Long receiptId) {

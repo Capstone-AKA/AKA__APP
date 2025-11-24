@@ -1,14 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  SafeAreaView,
-  Image,
-} from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, SafeAreaView, Image,} from "react-native";
 import { useRouter } from "expo-router";
 import { useStore } from "../../contexts/useStore";
 import { useBLE } from "../../hooks/useBLE";
@@ -70,8 +61,11 @@ export default function CartScreen() {
   const router = useRouter();
   const { cartNumber, setStoreId, setCartNumber } = useStore();
   const { user } = useAuth();
-  const { startScan, stopScan, devices } = useBLE();
-  
+  // const { startScan, stopScan, devices } = useBLE();
+  const { startScan, stopScan } = useBLE({
+  onExitDetected: (device) => handleExit(device, stopScan),
+});
+
   const lastUpdateRef = useRef(0); // WS 업데이트 Race Condition 방지용
   const exitRef = useRef<any>(null); // 🔥 EXIT 비콘 보관용 ref
   
@@ -231,6 +225,24 @@ export default function CartScreen() {
     setTotalAmount(total);
   };
 
+  // EXIT 감지 핸들러
+    function handleExit(device: any, stopScan: () => void) {
+    if (isPaying || exitDetected) return;
+
+    if (device?.rssi > EXIT_RSSI_THRESHOLD) {
+      console.log("🚪 EXIT 비콘 감지!", device.rssi);
+      setExitDetected(true);
+
+      handleAutoPayment();
+
+      setTimeout(() => {
+        setExitDetected(false);
+        setIsPaying(false);
+      }, EXIT_DETECTION_WINDOW);
+    }
+  }
+
+
   // ✅ 4️⃣ 수량 증가/감소/삭제 API
   const handleIncrease = async (cartItemId: number) => {
     try {
@@ -281,23 +293,23 @@ const handleDelete = async (cartItemId: number) => {
 };
 
   // ✅ 5️⃣ BLE 퇴장 감지 → 결제 처리
-  useEffect(() => {
-    if (isPaying || exitDetected) return;
+  // useEffect(() => {
+  //   if (isPaying || exitDetected) return;
 
-    // const exit = devices[EXIT_DEVICE_NAME];
-    const exit = devices.EXIT;
-    if (exit && typeof exit.rssi === "number" && exit.rssi > EXIT_RSSI_THRESHOLD) {
-      console.log(`🚪 퇴장 비콘 감지됨: ${exit.name} (RSSI: ${exit.rssi})`);
-      setExitDetected(true);
-      handleAutoPayment();
+  //   // const exit = devices[EXIT_DEVICE_NAME];
+  //   const exit = devices.EXIT;
+  //   if (exit && typeof exit.rssi === "number" && exit.rssi > EXIT_RSSI_THRESHOLD) {
+  //     console.log(`🚪 퇴장 비콘 감지됨: ${exit.name} (RSSI: ${exit.rssi})`);
+  //     setExitDetected(true);
+  //     handleAutoPayment();
 
-      setTimeout(() => {
-        console.log("🔄 퇴장 감지 초기화 및 재시작");
-        setExitDetected(false);
-        setIsPaying(false);
-      }, EXIT_DETECTION_WINDOW);
-    }
-  }, [devices]);
+  //     setTimeout(() => {
+  //       console.log("🔄 퇴장 감지 초기화 및 재시작");
+  //       setExitDetected(false);
+  //       setIsPaying(false);
+  //     }, EXIT_DETECTION_WINDOW);
+  //   }
+  // }, [devices]);
 
   // ✅ 6️⃣ 자동 결제
   const handleAutoPayment = async () => {

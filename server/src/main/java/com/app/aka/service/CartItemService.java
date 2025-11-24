@@ -40,7 +40,8 @@ public class CartItemService {
 
         for (String productIdentifier : request.getProductList()) {
             ProductEntity product = productRepository.findByNameContaining(productIdentifier.trim())
-                    .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + productIdentifier));
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "이 상품은 마트에 등록된 품목이 아닙니다: " + productIdentifier));
 
             Optional<CartItemEntity> existingCartItemOpt = cartItemRepository.findByCartAndProduct(cart, product);
 

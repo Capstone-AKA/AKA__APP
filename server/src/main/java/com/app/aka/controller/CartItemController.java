@@ -29,7 +29,7 @@ public class CartItemController {
                 request.getCartNumber(),
                 request.getProductList()
         );
-        
+
         CartItemDeltaListDto updatedCart = cartItemService.addItemsFromDevice(request);
 
         //cartNumber 기반으로 실시간 브로드캐스트

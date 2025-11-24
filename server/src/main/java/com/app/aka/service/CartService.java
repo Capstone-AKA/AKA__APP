@@ -78,15 +78,22 @@ public class CartService {
             throw new IllegalArgumentException("해당 카트는 사용자에게 할당되어 있지 않거나, 다른 사용자가 할당한 카트입니다.");
         }
 
+        // 1) cartItems 컬렉션도 비워줘야함 (JPA 영속성 컨텍스트 때문에)
+        cart.getCartItems().clear();
+
+        // 2) DB에서도 삭제
         cartItemRepository.deleteAllByCart(cart);
 
+        // 3) cart 정보 초기화
         cart.setUserId(null);
         cart.setIsActive(false);
         cart.setStatus("WAITING");
         cart.setTotalAmount(0);
         cart.setStoreId(null);
+
         cartRepository.save(cart);
 
+        // 사용자 상태 초기화
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
         user.setCurrentStoreId(null);

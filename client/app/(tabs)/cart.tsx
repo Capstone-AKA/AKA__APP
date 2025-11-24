@@ -1,5 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, SafeAreaView, Image,} from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  SafeAreaView,
+  Image,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { useStore } from "../../contexts/useStore";
 import { useBLE } from "../../hooks/useBLE";
@@ -7,12 +16,12 @@ import PaymentModal from "../../components/PaymentModal";
 import api from "../../api/api";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // JWT 저장소
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE_URL, EXPO_PUBLIC_USE_MOCK } from "@env";
 import { useAuth } from "../../contexts/useAuth";
 
 interface CartItem {
-  cartItemId: number; 
+  cartItemId: number;
   product_id: number;
   product_name: string;
   price: number;
@@ -31,7 +40,7 @@ const MOCK_CART_ITEMS: CartItem[] = [
     price: 950,
     quantity: 2,
     total_price: 1900,
-    image: "https://i.ibb.co/vQcR2WC/shinramen.png"
+    image: "https://i.ibb.co/vQcR2WC/shinramen.png",
   },
   {
     cartItemId: 2,
@@ -40,7 +49,7 @@ const MOCK_CART_ITEMS: CartItem[] = [
     price: 1800,
     quantity: 1,
     total_price: 1800,
-    image: "https://i.ibb.co/1TK4ZfS/cocacola.png"
+    image: "https://i.ibb.co/1TK4ZfS/cocacola.png",
   },
   {
     cartItemId: 3,
@@ -49,7 +58,7 @@ const MOCK_CART_ITEMS: CartItem[] = [
     price: 1300,
     quantity: 3,
     total_price: 3900,
-    image: "https://i.ibb.co/HdQhPzB/banana.png"
+    image: "https://i.ibb.co/HdQhPzB/banana.png",
   },
 ];
 
@@ -61,44 +70,44 @@ export default function CartScreen() {
   const router = useRouter();
   const { cartNumber, setStoreId, setCartNumber } = useStore();
   const { user } = useAuth();
-  // const { startScan, stopScan, devices } = useBLE();
-  const { startScan, stopScan } = useBLE({
-  onExitDetected: (device) => handleExit(device, stopScan),
-});
+  const { startScan, stopScan, devices } = useBLE();
 
-  const lastUpdateRef = useRef(0); // WS 업데이트 Race Condition 방지용
-  const exitRef = useRef<any>(null); // 🔥 EXIT 비콘 보관용 ref
-  
+  const lastUpdateRef = useRef(0);
+  const exitRef = useRef<any>(null);
+
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
+
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalMode, setModalMode] = useState<"confirm" | "complete">("confirm");
+  const [modalMode, setModalMode] =
+    useState<"confirm" | "complete">("confirm");
+
   const [finalAmount, setFinalAmount] = useState(0);
   const [finalItems, setFinalItems] = useState<CartItem[]>([]);
   const [lastPaymentId, setLastPaymentId] = useState<number | null>(null);
+
   const [isPaying, setIsPaying] = useState(false);
   const [exitDetected, setExitDetected] = useState(false);
 
   const stompClientRef = useRef<Client | null>(null);
   const USE_MOCK_PAYMENT = EXPO_PUBLIC_USE_MOCK === "true";
 
-  // ✅ 1️⃣ BLE 스캔 시작
+  /* ------------------------------- 1️⃣ BLE 스캔 시작 ------------------------------- */
   useEffect(() => {
     console.log("📡 CART 페이지 BLE 스캔 시작");
     startScan();
-
     return () => {
       console.log("🛑 CART 화면 종료 → BLE 스캔 중지");
       stopScan();
     };
   }, []);
 
-  // ✅ 2️⃣ WebSocket + JWT 연결
+  /* ------------------------------- 2️⃣ WebSocket + JWT 연결 ------------------------------- */
   useEffect(() => {
     if (!cartNumber) return;
 
     let isActive = true;
-    
+
     const connectWebSocket = async () => {
       try {
         const token = await AsyncStorage.getItem("accessToken");
@@ -120,6 +129,7 @@ export default function CartScreen() {
 
         client.onConnect = () => {
           if (!isActive) return;
+
           console.log("🟢 STOMP 연결 성공");
 
           if (user?.id) {
@@ -131,13 +141,12 @@ export default function CartScreen() {
 
           client.subscribe(`/topic/cart/${cartNumber}`, (message) => {
             const now = Date.now();
-
             if (now - lastUpdateRef.current < 100) {
               console.log("⛔ 오래된 WS 메시지 무시");
               return;
             }
-            lastUpdateRef.current = now;
 
+            lastUpdateRef.current = now;
             if (!message.body) return;
 
             const data = JSON.parse(message.body);
@@ -155,25 +164,21 @@ export default function CartScreen() {
               image: item.productImageUrl,
             }));
 
-            // merge
-            setCartItems(prevItems => {
+            setCartItems((prevItems) => {
               const updated = [...prevItems];
 
               mappedItems.forEach((newItem: CartItem) => {
-                const idx = updated.findIndex(i => i.cartItemId === newItem.cartItemId);
-
-                if (idx !== -1) {
-                  updated[idx] = newItem;
-                } else {
-                  updated.push(newItem);
-                }
+                const idx = updated.findIndex(
+                  (i) => i.cartItemId === newItem.cartItemId
+                );
+                if (idx !== -1) updated[idx] = newItem;
+                else updated.push(newItem);
               });
 
-              // 🔥 백엔드 totalAmount 있을 경우 그대로 사용
               if (data.newTotalAmount !== undefined) {
                 setTotalAmount(data.newTotalAmount);
               } else {
-                recalculateTotal(updated); // fallback
+                recalculateTotal(updated);
               }
 
               return updated;
@@ -194,11 +199,7 @@ export default function CartScreen() {
         stompClientRef.current = client;
       } catch (e) {
         console.error("🚫 WebSocket 연결 중 오류:", e);
-        if (e instanceof Error) {
-          Alert.alert("WebSocket 오류", e.message);
-        } else {
-          Alert.alert("WebSocket 오류", "알 수 없는 오류가 발생했습니다.");
-        }
+        Alert.alert("WebSocket 오류", e instanceof Error ? e.message : "알 수 없는 오류");
       }
     };
 
@@ -210,7 +211,7 @@ export default function CartScreen() {
     };
   }, [cartNumber, user?.id]);
 
-  // ⭐ MOCK 모드일 때 장바구니 초기 데이터 설정
+  /* ------------------------------- MOCK 장바구니 ------------------------------- */
   useEffect(() => {
     if (USE_MOCK_CART) {
       console.log("🧪 MOCK 장바구니 데이터 로드");
@@ -219,37 +220,24 @@ export default function CartScreen() {
     }
   }, [USE_MOCK_CART]);
 
-  // ✅ 3️⃣ 총액 계산
+  /* ------------------------------- 총액 계산 ------------------------------- */
   const recalculateTotal = (items: CartItem[]) => {
-    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const total = items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
     setTotalAmount(total);
   };
 
-  // EXIT 감지 핸들러
-    function handleExit(device: any, stopScan: () => void) {
-    if (isPaying || exitDetected) return;
-
-    if (device?.rssi > EXIT_RSSI_THRESHOLD) {
-      console.log("🚪 EXIT 비콘 감지!", device.rssi);
-      setExitDetected(true);
-
-      handleAutoPayment();
-
-      setTimeout(() => {
-        setExitDetected(false);
-        setIsPaying(false);
-      }, EXIT_DETECTION_WINDOW);
-    }
-  }
-
-
-  // ✅ 4️⃣ 수량 증가/감소/삭제 API
+  /* ------------------------------- 수량 증가/감소/삭제 ------------------------------- */
   const handleIncrease = async (cartItemId: number) => {
     try {
       const token = await AsyncStorage.getItem("accessToken");
-      await api.patch(`/api/cart/items/${cartItemId}/increase`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.patch(
+        `/api/cart/items/${cartItemId}/increase`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       console.log("✅ 수량 증가 성공:", cartItemId);
     } catch (error) {
       console.error("❌ 수량 증가 실패:", error);
@@ -259,61 +247,64 @@ export default function CartScreen() {
   const handleDecrease = async (cartItemId: number) => {
     try {
       const token = await AsyncStorage.getItem("accessToken");
-      await api.patch(`/api/cart/items/${cartItemId}/decrease`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.patch(
+        `/api/cart/items/${cartItemId}/decrease`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       console.log("✅ 수량 감소 성공:", cartItemId);
     } catch (error) {
       console.error("❌ 수량 감소 실패:", error);
     }
   };
 
-const handleDelete = async (cartItemId: number) => {
-  const prevItems = [...cartItems]; // 롤백 대비 복사본
-  const updatedItems = prevItems.filter((item) => item.cartItemId !== cartItemId);
+  const handleDelete = async (cartItemId: number) => {
+    const prevItems = [...cartItems];
+    const updatedItems = prevItems.filter(
+      (item) => item.cartItemId !== cartItemId
+    );
 
-  // UI에서 즉시 삭제
-  setCartItems(updatedItems);
-  recalculateTotal(updatedItems);
+    setCartItems(updatedItems);
+    recalculateTotal(updatedItems);
 
-  try {
-    const token = await AsyncStorage.getItem("accessToken");
-    await api.delete(`/api/cart/items/${cartItemId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    console.log("🗑️ 상품 삭제 성공:", cartItemId);
-  } catch (error) {
-    console.error("❌ 상품 삭제 실패:", error);
-    Alert.alert("서버 오류", "상품 삭제에 실패했습니다.");
+    try {
+      const token = await AsyncStorage.getItem("accessToken");
+      await api.delete(`/api/cart/items/${cartItemId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("🗑️ 상품 삭제 성공:", cartItemId);
+    } catch (error) {
+      console.error("❌ 상품 삭제 실패:", error);
+      Alert.alert("서버 오류", "상품 삭제에 실패했습니다.");
+      setCartItems(prevItems);
+      recalculateTotal(prevItems);
+    }
+  };
 
-    // 실패 시 원래 상태로 되돌림
-    setCartItems(prevItems);
-    recalculateTotal(prevItems);
-  }
-};
+  /* ------------------------------- BLE 퇴장 감지 ------------------------------- */
+  useEffect(() => {
+    if (isPaying || exitDetected) return;
 
-  // ✅ 5️⃣ BLE 퇴장 감지 → 결제 처리
-  // useEffect(() => {
-  //   if (isPaying || exitDetected) return;
+    const exit = devices.EXIT;
 
-  //   // const exit = devices[EXIT_DEVICE_NAME];
-  //   const exit = devices.EXIT;
-  //   if (exit && typeof exit.rssi === "number" && exit.rssi > EXIT_RSSI_THRESHOLD) {
-  //     console.log(`🚪 퇴장 비콘 감지됨: ${exit.name} (RSSI: ${exit.rssi})`);
-  //     setExitDetected(true);
-  //     handleAutoPayment();
+    if (exit && typeof exit.rssi === "number" && exit.rssi > EXIT_RSSI_THRESHOLD) {
+      console.log(`🚪 퇴장 비콘 감지됨: ${exit.name} (RSSI: ${exit.rssi})`);
 
-  //     setTimeout(() => {
-  //       console.log("🔄 퇴장 감지 초기화 및 재시작");
-  //       setExitDetected(false);
-  //       setIsPaying(false);
-  //     }, EXIT_DETECTION_WINDOW);
-  //   }
-  // }, [devices]);
+      setExitDetected(true);
+      handleAutoPayment();
 
-  // ✅ 6️⃣ 자동 결제
+      setTimeout(() => {
+        console.log("🔄 퇴장 감지 초기화 및 재시작");
+        setExitDetected(false);
+        setIsPaying(false);
+      }, EXIT_DETECTION_WINDOW);
+    }
+  }, [devices]);
+
+  /* ------------------------------- 자동 결제 ------------------------------- */
   const handleAutoPayment = async () => {
     if (isPaying) return;
+
     setIsPaying(true);
 
     try {
@@ -324,38 +315,45 @@ const handleDelete = async (cartItemId: number) => {
         console.log("💰 MOCK 결제 완료");
       } else {
         const token = await AsyncStorage.getItem("accessToken");
+
         const response = await api.post(
           `/api/payments/checkout`,
           { cartNumber },
           { headers: { Authorization: `Bearer ${token}` } }
         );
+
         console.log("✅ 결제 완료 응답:", response.data);
-        setLastPaymentId(response.data.receiptId); 
+        setLastPaymentId(response.data.receiptId);
       }
 
-    setCartItems([]);
-    setTotalAmount(0);
-    setStoreId(null);
-    setCartNumber(null);
+      setCartItems([]);
+      setTotalAmount(0);
+      setStoreId(null);
+      setCartNumber(null);
 
-    setModalMode("complete");
-    setModalVisible(true);
-    setIsPaying(false);
+      setModalMode("complete");
+      setModalVisible(true);
+      setIsPaying(false);
     } catch (error) {
       console.error("❌ 자동 결제 실패:", error);
       setIsPaying(false);
     }
-    };
+  };
 
-  // ✅ 7️⃣ 수동 결제
+  /* ------------------------------- 수동 결제 ------------------------------- */
   const handlePayment = async () => {
     try {
       const token = await AsyncStorage.getItem("accessToken");
 
       if (USE_MOCK_PAYMENT) {
         const res = {
-          data: { items: cartItems, amount: totalAmount, receiptId: 9999 },
+          data: {
+            items: cartItems,
+            amount: totalAmount,
+            receiptId: 9999,
+          },
         };
+
         setFinalItems(res.data.items);
         setFinalAmount(res.data.amount);
         setLastPaymentId(res.data.receiptId);
@@ -368,7 +366,7 @@ const handleDelete = async (cartItemId: number) => {
             amount: totalAmount,
           },
           {
-            headers: { Authorization: `Bearer ${token}` }, 
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
 
@@ -380,6 +378,7 @@ const handleDelete = async (cartItemId: number) => {
 
       setModalMode("complete");
       setModalVisible(true);
+
       setCartItems([]);
       setTotalAmount(0);
       stopScan();
@@ -391,23 +390,35 @@ const handleDelete = async (cartItemId: number) => {
     }
   };
 
-  // ✅ 8️⃣ 렌더링
+  /* ------------------------------- 렌더링 ------------------------------- */
   const renderItem = ({ item }: { item: CartItem }) => (
     <View style={styles.itemBox}>
       <View style={styles.topRow}>
-        <Image source={{ uri: item.image }} style={styles.productImage} resizeMode="contain" />
+        <Image
+          source={{ uri: item.image }}
+          style={styles.productImage}
+          resizeMode="contain"
+        />
         <View style={styles.infoSection}>
           <Text style={styles.productName}>{item.product_name}</Text>
           <Text style={styles.quantity}>x {item.quantity}</Text>
-
           <View style={styles.actionRow}>
-            <TouchableOpacity onPress={() => handleDecrease(item.cartItemId)} style={styles.actionBtn}>
+            <TouchableOpacity
+              onPress={() => handleDecrease(item.cartItemId)}
+              style={styles.actionBtn}
+            >
               <Text style={styles.actionText}>－</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleIncrease(item.cartItemId)} style={styles.actionBtn}>
+            <TouchableOpacity
+              onPress={() => handleIncrease(item.cartItemId)}
+              style={styles.actionBtn}
+            >
               <Text style={styles.actionText}>＋</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleDelete(item.cartItemId)} style={styles.deleteBtn}>
+            <TouchableOpacity
+              onPress={() => handleDelete(item.cartItemId)}
+              style={styles.deleteBtn}
+            >
               <Text style={styles.deleteText}>삭제</Text>
             </TouchableOpacity>
           </View>
@@ -471,7 +482,9 @@ const handleDelete = async (cartItemId: number) => {
               }}
             >
               <Text style={styles.payText}>결제하기</Text>
-              <Text style={styles.total}>총 {totalAmount.toLocaleString()}원</Text>
+              <Text style={styles.total}>
+                총 {totalAmount.toLocaleString()}원
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -480,7 +493,7 @@ const handleDelete = async (cartItemId: number) => {
   );
 }
 
-// ✅ 스타일
+/* ------------------------------- 스타일 ------------------------------- */
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   pageTitle: {
@@ -500,7 +513,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginVertical: 8,
   },
-  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   productImage: { width: 80, height: 80, marginRight: 15 },
   infoSection: { flex: 1, justifyContent: "center" },
   productName: { fontSize: 15, fontWeight: "600", marginBottom: 8 },

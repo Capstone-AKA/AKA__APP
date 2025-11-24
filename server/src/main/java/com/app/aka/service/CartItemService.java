@@ -39,9 +39,24 @@ public class CartItemService {
         List<CartItemResponseDto> addedItems = new ArrayList<>();
 
         for (String productIdentifier : request.getProductList()) {
+
             ProductEntity product = productRepository.findByNameContaining(productIdentifier.trim())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "이 상품은 마트에 등록된 품목이 아닙니다: " + productIdentifier));
+                    .orElse(null);
+
+            if (product == null) {
+                // WebSocket으로 에러 전송
+                CartErrorMessageDto errorMsg = CartErrorMessageDto.builder()
+                        .type("PRODUCT_NOT_FOUND")
+                        .message("해당 상품은 마트에 등록되어 있지 않은 상품입니다: " + productIdentifier)
+                        .build();
+
+                messagingTemplate.convertAndSend(
+                        "/topic/cart/" + request.getCartNumber(),
+                        errorMsg
+                );
+
+                continue; // 다음 상품 처리
+            }
 
             Optional<CartItemEntity> existingCartItemOpt = cartItemRepository.findByCartAndProduct(cart, product);
 

@@ -43,7 +43,7 @@ public class PaymentService {
                 .build();
         paymentRepository.save(payment);
 
-        // 🔥 영수증 스냅샷 저장 (이게 핵심)
+        // 영수증 스냅샷 저장
         List<PaymentItemEntity> snapshotItems = cart.getCartItems().stream()
                 .map(item -> PaymentItemEntity.builder()
                         .paymentId(payment.getId())
@@ -54,10 +54,10 @@ public class PaymentService {
                 .toList();
         paymentItemRepository.saveAll(snapshotItems);
 
-        // 🔥 카트 비우기
+        //카트 비우기
         cartService.exitCart(userId, cart.getStoreId(), cart.getCartNumber());
 
-        // 🔥 영수증 응답
+        //영수증 응답
         return buildReceiptResponse(payment, snapshotItems);
     }
 

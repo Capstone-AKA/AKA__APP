@@ -60,8 +60,19 @@ export default function PaymentMethodsScreen() {
 
   // 새 카드 등록
   const handleConfirmAdd = async () => {
-    if (!cardName || !cardNumber || !expiry) {
-      Alert.alert("오류", "카드 이름, 번호, 만료일을 모두 입력하세요.");
+    // 입력값 제한
+    if (cardNumber.length !== 16) {
+      Alert.alert("오류", "카드 번호는 16자리여야 합니다.");
+      return;
+    }
+
+    if (expiry.length !== 4) {
+      Alert.alert("오류", "만료일은 4자리(MMYY)여야 합니다.");
+      return;
+    }
+
+    if (!cardName) {
+      Alert.alert("오류", "카드 이름을 입력하세요.");
       return;
     }
 
@@ -69,7 +80,7 @@ export default function PaymentMethodsScreen() {
       const res = await api.post("/api/cards", {
         cardNumber,
         cardName,
-        cardType: "CHECK", // 고정값, 나중에 UI로 선택 가능
+        cardType: "CHECK",
         expiry,
       });
 
@@ -78,6 +89,7 @@ export default function PaymentMethodsScreen() {
       setCardName("");
       setCardNumber("");
       setExpiry("");
+
     } catch (err: any) {
       console.error("카드 추가 실패:", err.response?.data || err.message);
       Alert.alert("오류", err.response?.data?.message || "서버와 통신 중 문제가 발생했습니다.");
@@ -153,7 +165,11 @@ export default function PaymentMethodsScreen() {
               style={styles.input}
               placeholder="카드 번호 (16자리)"
               value={cardNumber}
-              onChangeText={setCardNumber}
+              onChangeText={(text) => {
+                // 숫자만 허용 + 16자리 제한
+                const onlyNumbers = text.replace(/[^0-9]/g, "");
+                if (onlyNumbers.length <= 16) setCardNumber(onlyNumbers);
+              }}
               keyboardType="numeric"
             />
 
@@ -161,7 +177,12 @@ export default function PaymentMethodsScreen() {
               style={styles.input}
               placeholder="만료일 (MM/YY)"
               value={expiry}
-              onChangeText={setExpiry}
+              onChangeText={(text) => {
+                // 숫자만 허용 + 4자리 제한
+                const onlyNumbers = text.replace(/[^0-9]/g, "");
+                if (onlyNumbers.length <= 4) setExpiry(onlyNumbers);
+              }}
+              keyboardType="numeric"
             />
 
             <TouchableOpacity

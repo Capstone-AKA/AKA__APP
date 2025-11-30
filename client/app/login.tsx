@@ -67,7 +67,8 @@ export default function AuthScreen() {
       if (USE_MOCK) {
         if (loginEmail === "test@test.com" && loginPassword === "1234") {
           Alert.alert("로그인 성공 (MOCK)");
-          router.replace("/home");
+          // router.replace("/home");
+          router.replace("/(tabs)/home");
         } else {
           Alert.alert("로그인 실패", "이메일 또는 비밀번호를 확인해주세요.");
         }
@@ -89,7 +90,8 @@ export default function AuthScreen() {
         }
 
         console.log("✅ 로그인 성공:", tokens);
-        router.replace("/home");
+        // router.replace("/home");
+        router.replace("/(tabs)/home");
       }
     } catch (err: any) {
       console.error("❌ 로그인 실패:", err);
@@ -121,7 +123,8 @@ export default function AuthScreen() {
       const token = await AsyncStorage.getItem("accessToken");
       console.log("✅ 회원가입 후 저장된 accessToken:", token);
 
-      router.replace("/home");
+      // router.replace("/home");
+      router.replace("/(tabs)/home");
     } catch (err: any) {
       console.error("❌ 회원가입 실패:", err);
       Alert.alert("회원가입 실패", err.message || "다시 시도해주세요.");

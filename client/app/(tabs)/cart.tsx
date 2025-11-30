@@ -60,6 +60,96 @@ const MOCK_CART_ITEMS: CartItem[] = [
     total_price: 3900,
     image: "https://i.ibb.co/HdQhPzB/banana.png",
   },
+   {
+    cartItemId: 4,
+    product_id: 104,
+    product_name: "포카칩 오리지널",
+    price: 1700,
+    quantity: 1,
+    total_price: 1700,
+    image: "https://i.ibb.co/pjqpKqK/potatochips.png",
+  },
+  {
+    cartItemId: 5,
+    product_id: 105,
+    product_name: "홈런볼",
+    price: 1500,
+    quantity: 2,
+    total_price: 3000,
+    image: "https://i.ibb.co/9r6H2Zs/homeunball.png",
+  },
+  {
+    cartItemId: 6,
+    product_id: 106,
+    product_name: "초코우유",
+    price: 1400,
+    quantity: 1,
+    total_price: 1400,
+    image: "https://i.ibb.co/s6wgGfJ/chocomilk.png",
+  },
+  {
+    cartItemId: 7,
+    product_id: 107,
+    product_name: "삼각김밥 참치마요",
+    price: 1200,
+    quantity: 3,
+    total_price: 3600,
+    image: "https://i.ibb.co/ZV0RZ2M/kimbab.png",
+  },
+  {
+    cartItemId: 8,
+    product_id: 108,
+    product_name: "컵라면 육개장",
+    price: 950,
+    quantity: 2,
+    total_price: 1900,
+    image: "https://i.ibb.co/jwjW3t8/yukgaejang.png",
+  },
+  {
+    cartItemId: 9,
+    product_id: 109,
+    product_name: "삼다수 2L",
+    price: 1200,
+    quantity: 2,
+    total_price: 2400,
+    image: "https://i.ibb.co/1z92Y63/samdaseu.png",
+  },
+  {
+    cartItemId: 10,
+    product_id: 110,
+    product_name: "바나나",
+    price: 3900,
+    quantity: 1,
+    total_price: 3900,
+    image: "https://i.ibb.co/NYKF7pJ/bananafruit.png",
+  },
+  {
+    cartItemId: 11,
+    product_id: 111,
+    product_name: "양파 3kg",
+    price: 6900,
+    quantity: 1,
+    total_price: 6900,
+    image: "https://i.ibb.co/8zC1rwB/onion.png",
+  },
+  {
+    cartItemId: 12,
+    product_id: 112,
+    product_name: "햇반 210g",
+    price: 1500,
+    quantity: 4,
+    total_price: 6000,
+    image: "https://i.ibb.co/8mBvG0w/hetban.png",
+  },
+  {
+    cartItemId: 13,
+    product_id: 113,
+    product_name: "비비고 만두",
+    price: 5200,
+    quantity: 1,
+    total_price: 5200,
+    image: "https://i.ibb.co/v1MpQ5j/mandu.png",
+  },
 ];
 
 const EXIT_DEVICE_NAME = "MART_OUT";
@@ -92,12 +182,17 @@ export default function CartScreen() {
   const stompClientRef = useRef<Client | null>(null);
   const USE_MOCK_PAYMENT = EXPO_PUBLIC_USE_MOCK === "true";
 
-  /* ------------------------------- 1️⃣ BLE 스캔 시작 ------------------------------- */
+  /* ------------------------------- 1️⃣ BLE 스캔 시작 ------------------------------- */  
   useEffect(() => {
-    console.log("📡 CART 페이지 BLE 스캔 시작");
-    startScan();
+    console.log("📡 CART 페이지 스캔 예약");
+
+    const timer = setTimeout(() => {
+      console.log("📡 CART 페이지 BLE 스캔 시작");
+      startScan();
+    }, 300); // 🔥 딜레이 추가
+
     return () => {
-      console.log("🛑 CART 화면 종료 → BLE 스캔 중지");
+      clearTimeout(timer);
       stopScan();
     };
   }, []);
@@ -282,40 +377,64 @@ export default function CartScreen() {
   };
 
   /* ------------------------------- BLE 퇴장 감지 ------------------------------- */
-  useEffect(() => {
-    if (isPaying || exitDetected) return;
+    useEffect(() => {
+      if (!cartNumber) return;
+      if (isPaying || exitDetected) return;
 
     const exit = devices.EXIT;
+    if (!exit || typeof exit.rssi !== "number") return;
 
-    if (exit && typeof exit.rssi === "number" && exit.rssi > EXIT_RSSI_THRESHOLD) {
-      console.log(`🚪 퇴장 비콘 감지됨: ${exit.name} (RSSI: ${exit.rssi})`);
-
+    if (exit.rssi > EXIT_RSSI_THRESHOLD) {
+      console.log("🚪 퇴장 비콘 감지!", exit.rssi);
       setExitDetected(true);
-      handleAutoPayment();
+
+      // 🔥 WebSocket 마지막 업데이트 기다림
+      setTimeout(() => {
+        handleAutoPayment();
+      }, 500); // ← 핵심 수정
 
       setTimeout(() => {
-        console.log("🔄 퇴장 감지 초기화 및 재시작");
         setExitDetected(false);
         setIsPaying(false);
       }, EXIT_DETECTION_WINDOW);
     }
-  }, [devices]);
+  }, [devices.EXIT]);
+
 
   /* ------------------------------- 자동 결제 ------------------------------- */
   const handleAutoPayment = async () => {
     if (isPaying) return;
-
     setIsPaying(true);
 
     try {
       console.log("💳 자동 결제 중...");
 
+      let newReceiptId = null;
+
       if (USE_MOCK_PAYMENT) {
-        await new Promise((res) => setTimeout(res, 1000));
-        console.log("💰 MOCK 결제 완료");
+        await new Promise(res => setTimeout(res, 800));
+
+        const mockReceipt = {
+          receiptId: 9999,
+          issuedAt: new Date().toISOString(),
+          paymentMethod: "MOCKPAY",
+          amount: totalAmount,
+          cartId: cartNumber,
+          items: cartItems.map(i => ({
+            productName: i.product_name,
+            quantity: i.quantity,
+            totalPrice: i.total_price,
+          })),
+        };
+
+        // 🔥 ReceiptScreen에서 읽을 수 있도록 저장
+        await AsyncStorage.setItem("mockReceipt", JSON.stringify(mockReceipt));
+
+        console.log("💾 자동결제 Mock Receipt 저장 완료:", mockReceipt);
+
+        newReceiptId = 9999; // 기존과 동일하게 설정
       } else {
         const token = await AsyncStorage.getItem("accessToken");
-
         const response = await api.post(
           `/api/payments/checkout`,
           { cartNumber },
@@ -323,17 +442,23 @@ export default function CartScreen() {
         );
 
         console.log("✅ 결제 완료 응답:", response.data);
-        setLastPaymentId(response.data.receiptId);
+        newReceiptId = response.data.receiptId;
       }
 
+      // ⭕ setState "이후"가 아닌, 즉시 값을 기억
+      setLastPaymentId(newReceiptId);
+
+      // 기존 흐름 유지
       setCartItems([]);
       setTotalAmount(0);
       setStoreId(null);
       setCartNumber(null);
+      stopScan();
 
       setModalMode("complete");
       setModalVisible(true);
       setIsPaying(false);
+
     } catch (error) {
       console.error("❌ 자동 결제 실패:", error);
       setIsPaying(false);
@@ -346,18 +471,38 @@ export default function CartScreen() {
       const token = await AsyncStorage.getItem("accessToken");
 
       if (USE_MOCK_PAYMENT) {
-        const res = {
-          data: {
-            items: cartItems,
-            amount: totalAmount,
-            receiptId: 9999,
-          },
+        const mockReceipt = {
+          receiptId: 9999,
+          issuedAt: new Date().toISOString(),
+          paymentMethod: "MOCKPAY",
+          amount: totalAmount,
+          cartId: cartNumber,
+          items: cartItems.map(i => ({
+            productName: i.product_name,
+            quantity: i.quantity,
+            totalPrice: i.total_price,
+          })),
         };
 
-        setFinalItems(res.data.items);
-        setFinalAmount(res.data.amount);
-        setLastPaymentId(res.data.receiptId);
-      } else {
+        // 🔥 ReceiptScreen에서 불러올 mock 저장
+        await AsyncStorage.setItem("mockReceipt", JSON.stringify(mockReceipt));
+
+        console.log("💾 수동결제 Mock Receipt 저장 완료:", mockReceipt);
+
+        // 기존 UI 상태 유지
+        setFinalAmount(mockReceipt.amount);
+        setLastPaymentId(mockReceipt.receiptId);
+
+        setModalMode("complete");
+        setModalVisible(true);
+
+        setCartItems([]);
+        setTotalAmount(0);
+        stopScan();
+        setStoreId(null);
+        setCartNumber(null);
+        return; // 서버 호출 막기
+      }else {
         const response = await api.post(
           `/api/payments/checkout`,
           {
@@ -391,7 +536,46 @@ export default function CartScreen() {
   };
 
   /* ------------------------------- 렌더링 ------------------------------- */
-  const renderItem = ({ item }: { item: CartItem }) => (
+  // const renderItem = ({ item }: { item: CartItem }) => (
+  //   <View style={styles.itemBox}>
+  //     <View style={styles.topRow}>
+  //       <Image
+  //         source={{ uri: item.image }}
+  //         style={styles.productImage}
+  //         resizeMode="contain"
+  //       />
+  //       <View style={styles.infoSection}>
+  //         <Text style={styles.productName}>{item.product_name}</Text>
+  //         <Text style={styles.quantity}>x {item.quantity}</Text>
+  //         <View style={styles.actionRow}>
+  //           <TouchableOpacity
+  //             onPress={() => handleDecrease(item.cartItemId)}
+  //             style={styles.actionBtn}
+  //           >
+  //             <Text style={styles.actionText}>－</Text>
+  //           </TouchableOpacity>
+  //           <TouchableOpacity
+  //             onPress={() => handleIncrease(item.cartItemId)}
+  //             style={styles.actionBtn}
+  //           >
+  //             <Text style={styles.actionText}>＋</Text>
+  //           </TouchableOpacity>
+  //           <TouchableOpacity
+  //             onPress={() => handleDelete(item.cartItemId)}
+  //             style={styles.deleteBtn}
+  //           >
+  //             <Text style={styles.deleteText}>삭제</Text>
+  //           </TouchableOpacity>
+  //         </View>
+  //       </View>
+  //       <View style={styles.rightSection}>
+  //         <Text style={styles.price}>₩{item.total_price.toLocaleString()}</Text>
+  //       </View>
+  //     </View>
+  //   </View>
+  // );
+
+    const renderItem = ({ item }: { item: CartItem }) => (
     <View style={styles.itemBox}>
       <View style={styles.topRow}>
         <Image
@@ -399,9 +583,15 @@ export default function CartScreen() {
           style={styles.productImage}
           resizeMode="contain"
         />
+
         <View style={styles.infoSection}>
           <Text style={styles.productName}>{item.product_name}</Text>
-          <Text style={styles.quantity}>x {item.quantity}</Text>
+
+          {/* 🔥 단가 × 수량 추가 */}
+          <Text style={styles.unitPrice}>
+            {item.price.toLocaleString()} × {item.quantity}개
+          </Text>
+
           <View style={styles.actionRow}>
             <TouchableOpacity
               onPress={() => handleDecrease(item.cartItemId)}
@@ -409,12 +599,14 @@ export default function CartScreen() {
             >
               <Text style={styles.actionText}>－</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               onPress={() => handleIncrease(item.cartItemId)}
               style={styles.actionBtn}
             >
               <Text style={styles.actionText}>＋</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               onPress={() => handleDelete(item.cartItemId)}
               style={styles.deleteBtn}
@@ -423,12 +615,15 @@ export default function CartScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
         <View style={styles.rightSection}>
+          {/* 총합 */}
           <Text style={styles.price}>₩{item.total_price.toLocaleString()}</Text>
         </View>
       </View>
     </View>
   );
+
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -441,7 +636,7 @@ export default function CartScreen() {
             data={cartItems}
             keyExtractor={(item) => item.cartItemId.toString()}
             renderItem={renderItem}
-            contentContainerStyle={{ paddingBottom: 120 }}
+            contentContainerStyle={{ paddingBottom: 180 }}
           />
         ) : (
           <Text style={{ textAlign: "center", marginTop: 20, color: "gray" }}>
@@ -463,11 +658,10 @@ export default function CartScreen() {
             stopScan();
             setStoreId(null);
             setCartNumber(null);
+
+            // lastPaymentId가 최신 값임을 보장하기 위해 바로 push
             if (lastPaymentId) {
-              router.push({
-                pathname: "/receipt",
-                params: { receipt_id: lastPaymentId.toString() },
-              });
+              router.push(`/receipt?receipt_id=${lastPaymentId}`);
             }
           }}
         />
@@ -521,6 +715,12 @@ const styles = StyleSheet.create({
   productImage: { width: 80, height: 80, marginRight: 15 },
   infoSection: { flex: 1, justifyContent: "center" },
   productName: { fontSize: 15, fontWeight: "600", marginBottom: 8 },
+  unitPrice: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#22C55E",
+    marginBottom: 4,
+  },
   quantity: { fontSize: 16, fontWeight: "600", color: "#22C55E" },
   rightSection: { alignItems: "flex-end", justifyContent: "center" },
   price: { fontSize: 16, fontWeight: "600", color: "#111" },

@@ -8,8 +8,9 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  BackHandler,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import BackButton from "../components/BackButton";
 import api from "../api/api";
@@ -19,7 +20,7 @@ const { width } = Dimensions.get("window");
 
 export default function ReceiptScreen() {
   const { receipt_id } = useLocalSearchParams<{ receipt_id: string }>();
-
+  const router = useRouter();
   const [receipt, setReceipt] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -31,7 +32,6 @@ export default function ReceiptScreen() {
       setError("");
       try {
         if (USE_MOCK_MODE) {
-          // [Mock 데이터] — 개발용
           const mockData = {
             receiptId: receipt_id ?? 9999,
             issuedAt: new Date().toISOString(),
@@ -40,12 +40,13 @@ export default function ReceiptScreen() {
             userId: 5,
             cartId: 20,
             items: [
-              { productName: "상품1상품1상품1상품1상품1상품1상품1상품1상품1", quantity: 2, totalPrice: 20000 },
+              { productName: "상품1...", quantity: 2, totalPrice: 20000 },
               { productName: "상품2", quantity: 1, totalPrice: 10000 },
             ],
           };
           setReceipt(mockData);
-        } else {
+        }
+        else {
           const token = await AsyncStorage.getItem("accessToken");
           const res = await api.get(`/api/payments/${receipt_id}`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -62,6 +63,23 @@ export default function ReceiptScreen() {
 
     if (receipt_id) fetchReceipt();
   }, [receipt_id]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        router.replace("/home");
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
+      );
+
+      return () => subscription.remove();
+    }, [])
+  );
+
 
   // ✅ 로딩 상태
   if (loading) {

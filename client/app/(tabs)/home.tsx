@@ -1,5 +1,8 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+
+
+//원본코드
+import React, { useEffect } from 'react';
+import { View, Text, Pressable, StyleSheet, BackHandler, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/useAuth';
 import { useStore } from '../../contexts/useStore';
@@ -8,6 +11,20 @@ export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
   const { storeId } = useStore();
+
+  useEffect(() => {
+    const backAction = () => {
+      BackHandler.exitApp();   // ← 무조건 앱 종료
+      return true;              // ← 기본 뒤로가기 방지
+    };
+
+    const handler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => handler.remove();
+  }, []);
 
   return (
     <View style={styles.container}>

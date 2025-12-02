@@ -1,3 +1,6 @@
+
+
+//원본코드
 import React, { useState } from "react";
 import {
   View,
@@ -81,13 +84,13 @@ export default function AuthScreen() {
         await saveTokensToAuthContext(tokens);
 
         // ✅ 로그인 후 토큰 확인
-        const token = await AsyncStorage.getItem("accessToken");
-        console.log("✅ AsyncStorage에 저장된 accessToken:", token);
+        // const token = await AsyncStorage.getItem("accessToken");
+        // console.log("✅ AsyncStorage에 저장된 accessToken:", token);
 
-        if (!token) {
-          Alert.alert("오류", "토큰이 저장되지 않았습니다.");
-          return;
-        }
+        // if (!token) {
+        //   Alert.alert("오류", "토큰이 저장되지 않았습니다.");
+        //   return;
+        // }
 
         console.log("✅ 로그인 성공:", tokens);
         // router.replace("/home");

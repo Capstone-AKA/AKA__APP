@@ -7,6 +7,7 @@ import com.app.aka.entity.UserEntity;
 import com.app.aka.repository.UserRepository;
 import com.app.aka.security.oauth2.TokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -21,20 +22,22 @@ public class AuthService {
     private final TokenProvider tokenProvider;
 
     public void signup(SignupRequestDto request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("이미 존재하는 이메일입니다.");
+
+        try {
+            UserEntity user = UserEntity.builder()
+                    .email(request.getEmail())
+                    .password(passwordEncoder.encode(request.getPassword()))
+                    .name(request.getName())
+                    .userId(request.getUserId())
+                    .isRegistered(true)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            userRepository.save(user);
+
+        } catch (DataIntegrityViolationException e) {
+            throw new RuntimeException("이미 존재하는 이메일입니다."); // UNIQUE 키 충돌 발생 시
         }
-
-        UserEntity user = UserEntity.builder()
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .name(request.getName())
-                .userId(request.getUserId())
-                .isRegistered(true)
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        userRepository.save(user);
     }
 
     public TokenResponseDto login(LoginRequestDto request) {

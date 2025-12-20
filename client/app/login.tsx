@@ -69,6 +69,10 @@ export default function AuthScreen() {
     try {
       if (USE_MOCK) {
         if (loginEmail === "test@test.com" && loginPassword === "1234") {
+          await saveTokensToAuthContext({
+            accessToken: "mock-access-token",
+            refreshToken: "mock-refresh-token",
+          });
           Alert.alert("로그인 성공 (MOCK)");
           // router.replace("/home");
           router.replace("/(tabs)/home");

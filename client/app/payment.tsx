@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -27,25 +27,82 @@ export default function PaymentMethodsScreen() {
   const { user } = useAuth();
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
+  const didFetch = useRef(false);
 
   // 모달 관련 state
   const [modalVisible, setModalVisible] = useState(false);
   const [cardName, setCardName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [expiry, setExpiry] = useState("");
+  const USE_MOCK = true; 
 
-  // 카드 목록 불러오기
-  const fetchCards = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get("/api/cards");
-      setCards(res.data);
-    } catch (err) {
-      console.error("카드 불러오기 실패:", err);
-    } finally {
+    // 카드 목록 불러오기
+const fetchCards = async () => {
+  setLoading(true);
+
+  const mockCards: Card[] = [
+    {
+      id: 1,
+      cardName: "삼성카드",
+      cardNumber: "1234567812345678",
+      cardType: "CHECK",
+      expiry: "0126",
+    },
+    {
+      id: 2,
+      cardName: "국민카드",
+      cardNumber: "1111222233334444",
+      cardType: "CHECK",
+      expiry: "1125",
+    },
+    {
+      id: 3,
+      cardName: "신한카드",
+      cardNumber: "9999888877776666",
+      cardType: "CREDIT",
+      expiry: "0827",
+    },
+  ];
+
+  if (USE_MOCK) {
+    // ✅ mock 모드
+    setTimeout(() => {
+      setCards(mockCards);
       setLoading(false);
-    }
-  };
+    }, 300);
+    return; // 🔥 여기서 끝
+  }
+
+  // ❌ mock=false 일 때만 실제 API
+  try {
+    const res = await api.get("/api/cards");
+
+    const validCards = Array.isArray(res.data)
+      ? res.data.filter(
+          (c: Card) =>
+            c.id &&
+            c.cardName &&
+            c.cardNumber &&
+            c.expiry
+        )
+      : [];
+
+    setCards(validCards);
+  } catch (err) {
+    console.error("카드 불러오기 실패:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  useEffect(() => {
+    // ✅ FIX 1 적용
+    if (didFetch.current) return;
+    didFetch.current = true;
+
+    fetchCards();
+  }, []);
 
   // 카드 삭제
   const handleDelete = async (cardId: number) => {
@@ -95,10 +152,6 @@ export default function PaymentMethodsScreen() {
       Alert.alert("오류", err.response?.data?.message || "서버와 통신 중 문제가 발생했습니다.");
     }
   };
-
-  useEffect(() => {
-    fetchCards();
-  }, []);
 
   if (loading) {
     return (

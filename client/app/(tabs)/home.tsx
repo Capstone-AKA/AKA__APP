@@ -13,6 +13,12 @@ export default function Home() {
   const { storeId } = useStore();
 
   useEffect(() => {
+    if (!user) {
+      router.replace("/"); // 로그인X → index로 강제 이동
+    }
+  }, [user]);
+
+  useEffect(() => {
     const backAction = () => {
       BackHandler.exitApp();   // ← 무조건 앱 종료
       return true;              // ← 기본 뒤로가기 방지
@@ -25,6 +31,9 @@ export default function Home() {
 
     return () => handler.remove();
   }, []);
+
+  // 🔥 user 없으면 UI 렌더링 자체를 막음
+  if (!user) return null;
 
   return (
     <View style={styles.container}>

@@ -24,7 +24,7 @@ public class CartItemController {
     public ResponseEntity<CartItemDeltaListDto> addItemsFromDevice(
             @RequestBody DeviceProductRequestDto request
     ) {
-        log.info("📸 Device request received at {} | cartNumber={} | products={}",
+        log.info("Device request received at {} | cartNumber={} | products={}",
                 System.currentTimeMillis(),
                 request.getCartNumber(),
                 request.getProductList()

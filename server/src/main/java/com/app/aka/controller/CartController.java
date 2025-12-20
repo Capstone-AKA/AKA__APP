@@ -37,7 +37,7 @@ public class CartController {
         try {
             cartService.assignCartToUser(userId, request.getCartNumber());
 
-            // 🟢 assign과 동시에 storeId=1 입장 처리
+            // assign과 동시에 storeId=1 입장 처리
             cartService.cartEnterByBle(userId, 1L);
 
             response.put("success", true);
@@ -49,8 +49,6 @@ public class CartController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
     }
-
-
 
     //퇴장
     @PostMapping("/exit")
